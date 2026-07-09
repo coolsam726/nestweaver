@@ -2,6 +2,7 @@
 const nestOrigin = (
   process.env.API_BASE_SERVER ?? 'http://127.0.0.1:3000/api'
 ).replace(/\/api\/?$/, '');
+const nuxtDevPort = Number(process.env.NUXT_DEV_PORT ?? 3001);
 const isDev = process.env.NODE_ENV !== 'production';
 
 export default defineNuxtConfig({
@@ -26,6 +27,17 @@ export default defineNuxtConfig({
         },
       },
     }),
+  },
+  vite: {
+    server: {
+      hmr: {
+        // App is opened on Nest (:3000) but Vite HMR WebSocket runs on Nuxt dev.
+        protocol: 'ws',
+        host: '127.0.0.1',
+        port: nuxtDevPort,
+        clientPort: nuxtDevPort,
+      },
+    },
   },
   runtimeConfig: {
     apiBaseServer:

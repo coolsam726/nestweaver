@@ -1,56 +1,82 @@
-# NestJS + Nuxt 4 Single-Port Stack
+# nuxest
 
-Monorepo where **NestJS** owns the HTTP server on one port in production:
+Scaffold **NestJS + Nuxt 4** monorepos with an interactive, batteries-included CLI.
 
-- `/api/*` — NestJS API
-- everything else — Nuxt 4 SSR (Nitro `listener` mounted as Express middleware)
-
-> **Continuing in a new workspace?** Read [WORKSPACE_CONTEXT.md](./WORKSPACE_CONTEXT.md) for full architecture, gotchas, and migration steps.
-
-## Structure
-
-```
-apps/api   — NestJS backend + production HTTP entry
-apps/web   — Nuxt 4 frontend (SSR)
-packages/shared — shared TypeScript types
-```
-
-## Prerequisites
-
-- Node.js 20+
-- pnpm (`corepack enable`)
-
-## Development
-
-Runs Nest on port **3000** (user-facing) and Nuxt dev on **3001** (internal). Nest proxies non-API traffic to Nuxt for HMR.
+## Create a project
 
 ```bash
-pnpm install
+npm create nuxest@latest my-app
+pnpm create nuxest my-app
+yarn create nuxest my-app
+bun create nuxest my-app
+```
+
+Use `.` as the directory name to scaffold into the current folder:
+
+```bash
+npm create nuxest@latest .
+```
+
+You'll be prompted for ORM, database, scheduling, queues, HTTP adapter, admin panel, and Nuxt mode (SSR/SPA).
+
+## After scaffolding
+
+```bash
+cd my-app
+cp .env.example .env
 pnpm dev
 ```
 
-Open http://localhost:3000
+Open **http://localhost:3000**
 
-## Production
+## Development (this repo)
+
+```bash
+pnpm install
+pnpm build
+
+# simulate npm create locally
+pnpm --filter create-nuxest dev my-app
+
+# or via nuxest directly
+pnpm --filter nuxest dev my-app
+```
+
+## Publish to npm
+
+### One-time setup
+
+1. Create an [npm access token](https://www.npmjs.com/settings/~your-user/tokens) with **Publish** permission.
+2. Add it to the GitHub repository as secret **`NPM_TOKEN`**.
+
+### Release flow
+
+1. Bump versions in `packages/nuxest/package.json` and `packages/create-nuxest/package.json` (keep them in sync).
+2. Commit, push to `main`, and [create a GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release) for the tag (e.g. `v0.1.0`).
+
+The **Publish** workflow runs on `release: published`, builds, smoke-tests the scaffolder, then publishes `nuxest` and `create-nuxest`.
+
+### Manual publish (dry run)
+
+GitHub → Actions → **Publish** → **Run workflow** → enable **Dry run** to validate without publishing.
+
+### Local publish
 
 ```bash
 pnpm build
-pnpm start:prod
+pnpm --filter nuxest publish --access public --no-git-checks
+pnpm --filter create-nuxest publish --access public --no-git-checks
 ```
 
-## Docker
+Users then run `npm create nuxest@latest`.
 
-```bash
-docker build -t nest-nuxt-stack .
-docker run -p 3000:3000 nest-nuxt-stack
-```
+## Packages
 
-## Production notes
+| Package | Role |
+|---------|------|
+| `create-nuxest` | npm entry for `npm create nuxest` |
+| `nuxest` | Core scaffolder, templates, and `nuxest` CLI |
 
-- Nuxt is built with the Nitro `node-listener` preset so it exports an Express-compatible `listener` middleware for Nest to mount.
-- SSR API calls use `runtimeConfig.apiBaseServer` (`http://127.0.0.1:3000/api`) because Nitro does not route `/api/*` internally.
-- Nuxt dev binds to `127.0.0.1:3001` so the Nest proxy can reach it reliably.
+## License
 
-## API
-
-- `GET /api/health` — returns `{ status: "ok", timestamp: "..." }`
+MIT

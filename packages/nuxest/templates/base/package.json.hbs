@@ -1,0 +1,17 @@
+{
+  "name": "{{projectName}}",
+  "private": true,
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "start:prod": "NODE_ENV=production node apps/api/dist/main.js",
+    "test": "pnpm --filter api test && pnpm --filter api test:e2e"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -6,7 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import type { RequestHandler } from 'express';
+import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import { AppModule } from './app.module';
 import { setNuxtListener } from './nuxt-fallback.controller';
 
@@ -49,6 +49,30 @@ async function bootstrap() {
     AppModule.register(),
   );
 
+  let devProxy:
+    | (RequestHandler & {
+        upgrade: (req: unknown, socket: Socket, head: Buffer) => void;
+      })
+    | undefined;
+
+  if (!isProduction && enableNuxtProxy) {
+    devProxy = createProxyMiddleware({
+      target: process.env.NUXT_DEV_URL ?? 'http://127.0.0.1:3001',
+      changeOrigin: true,
+      ws: true,
+    }) as typeof devProxy;
+
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.use((req: Request, res: Response, next: NextFunction) => {
+      const url = req.originalUrl ?? req.url ?? '';
+      if (url.startsWith('/api')) {
+        return next();
+      }
+
+      devProxy!(req, res, next);
+    });
+  }
+
   await app.init();
 
   if (isProduction) {
@@ -58,15 +82,7 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
 
-  if (!isProduction && enableNuxtProxy) {
-    const devProxy = createProxyMiddleware({
-      target: process.env.NUXT_DEV_URL ?? 'http://127.0.0.1:3001',
-      changeOrigin: true,
-      ws: true,
-    }) as RequestHandler & {
-      upgrade: (req: unknown, socket: Socket, head: Buffer) => void;
-    };
-
+  if (devProxy) {
     const server = app.getHttpServer();
     server.on('upgrade', (req, socket, head) => {
       if (req.url?.startsWith('/api')) {

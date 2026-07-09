@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { HealthResponse } from '@nest-nuxt-stack/shared';
+import type { HealthResponse } from '@repo/shared';
 
 @Controller('api/health')
 export class HealthController {

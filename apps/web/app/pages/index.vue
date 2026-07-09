@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HealthResponse } from '@nest-nuxt-stack/shared';
+import type { HealthResponse } from '@repo/shared';
 
 const config = useRuntimeConfig();
 const apiBase = import.meta.server
@@ -8,6 +8,7 @@ const apiBase = import.meta.server
 
 const { data: health, error } = await useFetch<HealthResponse>(
   `${apiBase}/health`,
+  { key: 'health' },
 );
 </script>
 
