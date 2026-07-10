@@ -22,6 +22,13 @@
     return view === 'kanban' ? `${basePath}/${slug}/kanban` : `${basePath}/${slug}`;
   }
 
+  function resourceSlugFromUrl(basePath, pathname) {
+    const baseSegments = basePath.split('/').filter(Boolean);
+    const pathSegments = pathname.split('/').filter(Boolean);
+    if (pathSegments.length <= baseSegments.length) return '';
+    return pathSegments[baseSegments.length] ?? '';
+  }
+
   function resolveFlashMessage(value) {
     return FLASH_MESSAGES[value] ?? decodeURIComponent(value);
   }
@@ -251,6 +258,8 @@
         if (!form) return;
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
+          const submitBtn = form.querySelector('[type="submit"]');
+          if (submitBtn) submitBtn.disabled = true;
           try {
             const body = new URLSearchParams(new FormData(form));
             const res = await fetch(form.action, {
@@ -259,10 +268,11 @@
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
               },
               body,
-              redirect: 'manual',
+              redirect: 'follow',
             });
-            if (res.status >= 300 && res.status < 400) {
-              this.handleRedirect(res.headers.get('Location'));
+            if (res.redirected) {
+              const done = new URL(res.url);
+              this.handleRedirect(`${done.pathname}${done.search}`);
               return;
             }
             if (!res.ok) {
@@ -270,6 +280,8 @@
             }
           } catch {
             showToast('error', 'Could not save the record. Please try again.');
+          } finally {
+            if (submitBtn) submitBtn.disabled = false;
           }
         });
       },
@@ -286,7 +298,10 @@
         }
 
         const basePath = document.body.dataset.velmBasePath || '';
-        const slug = this.resourceSlug || url.pathname.split('/').filter(Boolean).slice(-2, -1)[0] || '';
+        const slug =
+          this.resourceSlug ||
+          resourceSlugFromUrl(basePath, url.pathname) ||
+          '';
         if (slug) {
           window.location.assign(listPath(basePath, slug, getStoredListView(slug)));
           return;
