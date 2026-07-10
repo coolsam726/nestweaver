@@ -35,7 +35,7 @@ my-app/
 │   │       ├── main.ts          # bootstrap, prod mount, dev proxy + WS
 │   │       ├── app.module.ts
 │   │       ├── health.controller.ts
-│   │       └── nuxt-fallback.controller.ts
+│   │       └── ssr-fallback.controller.ts
 │   └── web/                     # Nuxt 4 SSR frontend
 │       ├── nuxt.config.ts
 │       └── app/pages/
@@ -50,7 +50,7 @@ my-app/
 3. `NODE_ENV=production node apps/api/dist/main.js`:
    - Registers `/api/*` controllers
    - Mounts `express.static(.output/public)`
-   - `NuxtFallbackController` delegates non-API traffic to the Nitro `listener`
+   - `SsrFallbackController` delegates non-API traffic to the Nitro `listener`
 
 ### Nitro preset (required)
 
@@ -65,7 +65,7 @@ The default `node-server` preset starts its own server and does not export `list
 
 ### Nest catch-all, not raw `express.use(listener)`
 
-Mounting `listener` via `expressApp.use(listener)` after `app.init()` does not work — Nest's 404 handler intercepts first. Use `NuxtFallbackController` with `@All('*')` in production.
+Mounting `listener` via `expressApp.use(listener)` after `app.init()` does not work — Nest's 404 handler intercepts first. Use `SsrFallbackController` with `@All('*')` in production.
 
 ### SSR API base URL
 
@@ -100,8 +100,8 @@ In dev, Nuxt also proxies `/api/*` to Nest so port `:3001` works for client-side
 |----------|---------|---------|
 | `PORT` | `3000` | Nest listen port |
 | `NODE_ENV` | — | `production` enables Nuxt listener |
-| `ENABLE_NUXT_PROXY` | — | `true` in api dev script |
-| `NUXT_DEV_URL` | `http://127.0.0.1:3001` | Dev proxy target |
+| `ENABLE_WEB_PROXY` | — | `true` in api dev script |
+| `WEB_DEV_URL` | `http://127.0.0.1:3001` | Dev proxy target |
 | `API_BASE_SERVER` | `http://127.0.0.1:3000/api` | Nuxt SSR → Nest API |
 
 See `.env.example` for a copy-paste template.

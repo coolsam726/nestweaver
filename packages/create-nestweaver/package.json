@@ -1,0 +1,32 @@
+{
+  "name": "create-nestweaver",
+  "version": "0.1.0",
+  "description": "Create a NestJS + multi-frontend monorepo with nestweaver",
+  "type": "module",
+  "bin": {
+    "create-nestweaver": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "nestweaver": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.3"
+  }
+}

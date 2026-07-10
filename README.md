@@ -1,19 +1,21 @@
-# nuxest
+# nestweaver
 
-Scaffold **NestJS + Nuxt 4** monorepos with an interactive, batteries-included CLI.
+Scaffold **NestJS + multi-frontend** monorepos with an interactive, batteries-included CLI.
+
+Supported frontends: **Nuxt 4**, **Vite + React**, **Vite + Vue**, and **Vite + Svelte**.
 
 ## Create a project
 
 **After publish** (from npm):
 
 ```bash
-npm create nuxest@latest my-app
-pnpm create nuxest my-app
-yarn create nuxest my-app
-bun create nuxest my-app
+npm create nestweaver@latest my-app
+pnpm create nestweaver my-app
+yarn create nestweaver my-app
+bun create nestweaver my-app
 ```
 
-> **Note:** `pnpm create nuxest my-app` — `nuxest` is the starter, `my-app` is your project folder.
+> **Note:** `pnpm create nestweaver my-app` — `nestweaver` is the starter, `my-app` is your project folder.
 > Do **not** run `pnpm create my-app` (that looks for a package named `create-my-app` on npm).
 
 **Local development** (from this repo, before publish):
@@ -26,10 +28,10 @@ pnpm run create my-app
 Use `.` as the directory name to scaffold into the current folder:
 
 ```bash
-npm create nuxest@latest .
+npm create nestweaver@latest .
 ```
 
-You'll be prompted for database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, admin panel, and Nuxt mode (SSR/SPA).
+You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, admin panel, and Nuxt render mode (SSR/SPA) when applicable.
 
 ## After scaffolding
 
@@ -59,11 +61,11 @@ Open **http://localhost:4000**
 pnpm install
 pnpm build
 
-# local scaffold (same prompts as npm create nuxest)
+# local scaffold (same prompts as npm create nestweaver)
 pnpm run create my-app
 
 # equivalent
-pnpm run create:nuxest my-app
+pnpm run create:weaver my-app
 ```
 
 ## Publish to npm
@@ -75,10 +77,10 @@ pnpm run create:nuxest my-app
 
 ### Release flow
 
-1. Bump versions in `packages/nuxest/package.json` and `packages/create-nuxest/package.json` (keep them in sync).
+1. Bump versions in `packages/nestweaver/package.json` and `packages/create-nestweaver/package.json` (keep them in sync).
 2. Commit, push to `main`, and [create a GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release) for the tag (e.g. `v0.1.0`).
 
-The **Publish** workflow runs on `release: published`, builds, smoke-tests the scaffolder, then publishes `nuxest` and `create-nuxest`.
+The **Publish** workflow runs on `release: published`, builds, smoke-tests the scaffolder, then publishes `nestweaver` and `create-nestweaver`.
 
 ### Manual publish (dry run)
 
@@ -88,18 +90,18 @@ GitHub → Actions → **Publish** → **Run workflow** → enable **Dry run** t
 
 ```bash
 pnpm build
-pnpm --filter nuxest publish --access public --no-git-checks
-pnpm --filter create-nuxest publish --access public --no-git-checks
+pnpm --filter nestweaver publish --access public --no-git-checks
+pnpm --filter create-nestweaver publish --access public --no-git-checks
 ```
 
-Users then run `npm create nuxest@latest`.
+Users then run `npm create nestweaver@latest`.
 
 ## Packages
 
 | Package | Role |
 |---------|------|
-| `create-nuxest` | npm entry for `npm create nuxest` |
-| `nuxest` | Core scaffolder, templates, and `nuxest` CLI |
+| `create-nestweaver` | npm entry for `npm create nestweaver` |
+| `nestweaver` | Core scaffolder, templates, and `weaver` CLI |
 
 ## License
 

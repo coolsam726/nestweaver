@@ -8,7 +8,7 @@ import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import { AppModule } from './app.module';
-import { setNuxtListener } from './nuxt-fallback.controller';
+import { setSsrListener } from './ssr-fallback.controller';
 
 function resolveWebOutputRoot(): string {
   const candidates = [
@@ -23,11 +23,11 @@ function resolveWebOutputRoot(): string {
   }
 
   throw new Error(
-    'Nuxt build output not found. Run "pnpm build" from the monorepo root first.',
+    'SSR build output not found. Run "pnpm build" from the monorepo root first.',
   );
 }
 
-async function mountNuxtProduction(app: NestExpressApplication): Promise<void> {
+async function mountSsrProduction(app: NestExpressApplication): Promise<void> {
   const outputRoot = resolveWebOutputRoot();
   const listenerPath = join(outputRoot, 'server/index.mjs');
   const publicPath = join(outputRoot, 'public');
@@ -38,12 +38,12 @@ async function mountNuxtProduction(app: NestExpressApplication): Promise<void> {
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.use(express.static(publicPath));
-  setNuxtListener(listener);
+  setSsrListener(listener);
 }
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const enableNuxtProxy = process.env.ENABLE_NUXT_PROXY === 'true';
+  const enableWebProxy = process.env.ENABLE_WEB_PROXY === 'true';
 
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule.register(),
@@ -55,9 +55,9 @@ async function bootstrap() {
       })
     | undefined;
 
-  if (!isProduction && enableNuxtProxy) {
+  if (!isProduction && enableWebProxy) {
     devProxy = createProxyMiddleware({
-      target: process.env.NUXT_DEV_URL ?? 'http://127.0.0.1:3001',
+      target: process.env.WEB_DEV_URL ?? 'http://127.0.0.1:3001',
       changeOrigin: true,
       ws: true,
     }) as typeof devProxy;
@@ -76,7 +76,7 @@ async function bootstrap() {
   await app.init();
 
   if (isProduction) {
-    await mountNuxtProduction(app);
+    await mountSsrProduction(app);
   }
 
   const port = Number(process.env.PORT ?? 3000);
@@ -96,9 +96,9 @@ async function bootstrap() {
 
   if (isProduction) {
     console.log(`Production server listening on http://localhost:${port}`);
-  } else if (enableNuxtProxy) {
+  } else if (enableWebProxy) {
     console.log(
-      `Dev server listening on http://localhost:${port} (proxying frontend to Nuxt dev)`,
+      `Dev server listening on http://localhost:${port} (proxying frontend dev server)`,
     );
   } else {
     console.log(`API server listening on http://localhost:${port}`);
