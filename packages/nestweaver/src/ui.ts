@@ -48,7 +48,7 @@ You will be asked interactively:
   • Task scheduling (@nestjs/schedule)
   • Job queues (BullMQ + Redis)
   • HTTP adapter (Fastify or Express)
-  • MVC admin panel (Handlebars at /admin)
+  • Declarative admin panel (@weaver/velm at /admin)
   • Nuxt render mode (SSR or SPA — when Nuxt is selected)
 `);
 }

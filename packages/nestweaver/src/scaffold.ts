@@ -17,6 +17,8 @@ import {
 import { isSsrFrontend, isSpaFrontend } from './frontend.js';
 import { NEST_DEFAULT_PORT } from './constants.js';
 import { generateTypeormDatabaseModule } from './generators/typeorm-database-module.js';
+import { generateVelmAdminFiles } from './generators/velm-admin.js';
+import { vendorVelmPackage } from './generators/velm-dependency.js';
 import { generatePnpmWorkspace } from './generators/pnpm-workspace.js';
 import { renderFile, toContext } from './render.js';
 import type { ScaffoldOptions, TemplateContext } from './types.js';
@@ -39,6 +41,10 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<void> {
     context,
   );
   applyFeatures(options, context);
+
+  if (options.admin) {
+    vendorVelmPackage(options.targetDir);
+  }
 
   writeGeneratedFiles(options, context);
 
@@ -65,10 +71,6 @@ function applyFeatures(options: ScaffoldOptions, context: TemplateContext): void
 
   if (options.queues) {
     copyDir(join(features, 'queues'), options.targetDir, context);
-  }
-
-  if (options.admin) {
-    copyDir(join(features, 'admin', options.httpAdapter), options.targetDir, context);
   }
 
   if (isSsrFrontend(options)) {
@@ -133,6 +135,12 @@ function writeGeneratedFiles(
       join(targetDir, 'apps/api/src/database/database.module.ts'),
       generateTypeormDatabaseModule(options),
     ]);
+  }
+
+  if (options.admin) {
+    for (const [relativePath, content] of generateVelmAdminFiles(options)) {
+      writes.push([join(targetDir, relativePath), content]);
+    }
   }
 
   for (const [filePath, content] of writes) {

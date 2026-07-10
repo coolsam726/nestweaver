@@ -48,7 +48,7 @@ export function generateAppModule(options: ScaffoldOptions): string {
   }
 
   if (options.admin) {
-    imports.push("import { AdminModule } from './admin/admin.module';");
+    imports.push("import { VelmAdminModule } from './admin/velm-admin.module';");
   }
 
   const fallbackImport = isSsrFrontend(options)
@@ -73,7 +73,7 @@ export function generateAppModule(options: ScaffoldOptions): string {
   }
 
   if (options.queues) moduleImports.push('QueuesModule');
-  if (options.admin) moduleImports.push('AdminModule');
+  if (options.admin) moduleImports.push('VelmAdminModule');
 
   const dbMod = dbModuleName(options);
   if (dbMod) moduleImports.push(dbMod);

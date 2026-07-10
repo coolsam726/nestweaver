@@ -119,12 +119,12 @@ export async function collectOptions(
   });
 
   const admin = await confirm({
-    message: 'Add MVC admin panel (Handlebars views at /admin)?',
+    message: 'Add declarative admin panel (@weaver/velm at /admin)?',
     default: false,
   });
 
-  if (admin && httpAdapter === 'fastify') {
-    console.log('  Admin panel uses Handlebars via @fastify/view.');
+  if (admin && orm === 'none') {
+    console.log('  Tip: add an ORM to scaffold Companies and Users resources in Velm.');
   }
 
   const frontendSummary = supportsRenderMode(frontend)

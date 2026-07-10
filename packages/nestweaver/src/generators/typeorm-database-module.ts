@@ -10,17 +10,18 @@ export function generateTypeormDatabaseModule(
   if (options.database === 'sqlite') {
     return `import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Note } from './note.entity';
+import { Company } from './company.entity';
+import { User } from './user.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
       database: process.env.DATABASE_URL?.replace(/^file:/, '') ?? './data/dev.db',
-      entities: [Note],
+      entities: [Company, User],
       synchronize: process.env.NODE_ENV !== 'production',
     }),
-    TypeOrmModule.forFeature([Note]),
+    TypeOrmModule.forFeature([Company, User]),
   ],
   exports: [TypeOrmModule],
 })
@@ -32,17 +33,18 @@ export class DatabaseModule {}
 
   return `import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Note } from './note.entity';
+import { Company } from './company.entity';
+import { User } from './user.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: '${type}',
       url: process.env.DATABASE_URL,
-      entities: [Note],
+      entities: [Company, User],
       synchronize: process.env.NODE_ENV !== 'production',
     }),
-    TypeOrmModule.forFeature([Note]),
+    TypeOrmModule.forFeature([Company, User]),
   ],
   exports: [TypeOrmModule],
 })
