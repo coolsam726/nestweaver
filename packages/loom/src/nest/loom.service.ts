@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { VelmAdapter } from '../adapters/adapter.js';
-import { resolveBranding, type VelmBranding } from '../core/branding.js';
+import type { LoomAdapter } from '../adapters/adapter.js';
+import { resolveBranding, type LoomBranding } from '../core/branding.js';
 import { ResourceRegistry } from '../core/registry.js';
 import { menuLayoutContext } from '../core/menu.js';
-import type { ListQuery, ResourceMeta, VelmModuleOptions } from '../core/types.js';
-import { VELM_ADAPTER, VELM_OPTIONS, VELM_REGISTRY } from '../core/types.js';
+import type { ListQuery, ResourceMeta, LoomModuleOptions } from '../core/types.js';
+import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
 
 @Injectable()
-export class VelmService {
+export class LoomService {
   constructor(
-    @Inject(VELM_ADAPTER) private readonly adapter: VelmAdapter,
-    @Inject(VELM_REGISTRY) private readonly registry: ResourceRegistry,
-    @Inject(VELM_OPTIONS) private readonly options: VelmModuleOptions,
+    @Inject(LOOM_ADAPTER) private readonly adapter: LoomAdapter,
+    @Inject(LOOM_REGISTRY) private readonly registry: ResourceRegistry,
+    @Inject(LOOM_OPTIONS) private readonly options: LoomModuleOptions,
   ) {}
 
   get basePath(): string {
@@ -22,7 +22,7 @@ export class VelmService {
     return this.branding.brandName;
   }
 
-  get branding(): VelmBranding {
+  get branding(): LoomBranding {
     const company = this.companies.find((item) => item.id === this.currentCompanyId);
     return resolveBranding(this.options.branding, company?.branding, this.options.title);
   }

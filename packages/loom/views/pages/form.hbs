@@ -1,13 +1,13 @@
 {{#if embed}}
   <form
-    id="velm-form"
-    data-velm-embed-form
+    id="loom-form"
+    data-loom-embed-form
     method="post"
     action="{{#if (eq mode 'create')}}{{basePath}}/{{resource.slug}}{{else}}{{basePath}}/{{resource.slug}}/{{id}}{{/if}}"
     class="space-y-4"
   >
     {{#each resource.form.sections}}
-      <fieldset class="velm-card rounded-xl p-4">
+      <fieldset class="loom-card rounded-xl p-4">
         <legend class="text-sm font-semibold text-heading mb-3 px-1">{{title}}</legend>
         {{#if description}}<p class="mb-3 -mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
         <div class="grid gap-4 sm:grid-cols-{{columns}}">
@@ -45,7 +45,7 @@
   </form>
 {{else}}
 <div class="mx-auto max-w-5xl space-y-6">
-  <div class="velm-form-actions-bar flex items-center justify-between gap-3 sticky top-0 z-20 py-2 mb-2 bg-velm-shell/95 backdrop-blur-sm">
+  <div class="loom-form-actions-bar flex items-center justify-between gap-3 sticky top-0 z-20 py-2 mb-2 bg-loom-shell/95 backdrop-blur-sm">
     <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full
       {{#if readonly}}bg-badge-neutral text-body-subtle
       {{else}}{{#if (eq mode 'edit')}}bg-warning-soft text-warning-strong
@@ -57,22 +57,22 @@
       {{#if readonly}}
         <a href="{{basePath}}/{{resource.slug}}/{{id}}/edit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition">Edit</a>
       {{else}}
-        <button type="submit" form="velm-form" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition">
+        <button type="submit" form="loom-form" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition">
           {{#if (eq mode 'create')}}Create{{else}}Save{{/if}}
         </button>
-        <a href="{{basePath}}/{{resource.slug}}" data-velm-list-href="{{resource.slug}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-default text-body rounded-md hover:bg-surface-hover transition">Cancel</a>
+        <a href="{{basePath}}/{{resource.slug}}" data-loom-list-href="{{resource.slug}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-default text-body rounded-md hover:bg-surface-hover transition">Cancel</a>
       {{/if}}
     </div>
   </div>
 
   <form
-    id="velm-form"
+    id="loom-form"
     method="post"
     action="{{#if (eq mode 'create')}}{{basePath}}/{{resource.slug}}{{else}}{{basePath}}/{{resource.slug}}/{{id}}{{/if}}"
     class="space-y-6"
   >
     {{#each resource.form.sections}}
-      <fieldset class="velm-card rounded-xl p-6">
+      <fieldset class="loom-card rounded-xl p-6">
         <legend class="text-sm font-semibold text-heading mb-4 px-1">{{title}}</legend>
         {{#if description}}<p class="mb-4 -mt-2 text-sm text-body-subtle">{{description}}</p>{{/if}}
         <div class="grid gap-5 sm:grid-cols-{{columns}}">

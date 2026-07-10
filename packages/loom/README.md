@@ -85,7 +85,7 @@ Optional `kanban()` defines columns and card fields for a board view at `/admin/
 
 ### Presentation
 
-Resources support `presentation: { form: 'modal' | 'page', detail: 'modal' | 'page' }` for PyVelm-style dialogs or full-page routes.
+Resources support `presentation: { form: 'modal' | 'page', detail: 'modal' | 'page' }` for Loom-style dialogs or full-page routes.
 
 ## Base resources
 
@@ -116,13 +116,10 @@ Set env vars or pass `branding` in `LoomModule.forRoot()`:
 
 | Env var | Purpose |
 |---------|---------|
-| `LOOM_BRAND_NAME` | Panel title (also `VELM_BRAND_NAME`) |
+| `LOOM_BRAND_NAME` | Panel title |
 | `LOOM_BRAND_LOGO_URL` | Logo (light mode) |
 | `LOOM_BRAND_PRIMARY_COLOR` | Primary hex color |
 | `LOOM_BRAND_ACCENT_COLOR` | Accent hex color |
-
-Legacy `VELM_BRAND_*` env vars are still supported.
-
 ## Development
 
 ```bash

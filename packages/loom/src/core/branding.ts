@@ -1,4 +1,4 @@
-export interface VelmBranding {
+export interface LoomBranding {
   brandName: string;
   logoUrl?: string;
   logoDarkUrl?: string;
@@ -9,25 +9,14 @@ export interface VelmBranding {
   accentColor: string;
 }
 
-export const DEFAULT_VELM_BRANDING: VelmBranding = {
+export const DEFAULT_LOOM_BRANDING: LoomBranding = {
   brandName: 'Admin',
   fontFamily: 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
   primaryColor: '#f1511b',
   accentColor: '#286291',
 };
 
-const ENV_KEYS = {
-  brandName: 'VELM_BRAND_NAME',
-  logoUrl: 'VELM_BRAND_LOGO_URL',
-  logoDarkUrl: 'VELM_BRAND_LOGO_DARK_URL',
-  copyrightText: 'VELM_BRAND_COPYRIGHT',
-  fontFamily: 'VELM_BRAND_FONT_FAMILY',
-  fontUrl: 'VELM_BRAND_FONT_URL',
-  primaryColor: 'VELM_BRAND_PRIMARY_COLOR',
-  accentColor: 'VELM_BRAND_ACCENT_COLOR',
-} as const;
-
-const LOOM_ENV_KEYS = {
+export const LOOM_BRANDING_ENV_KEYS = {
   brandName: 'LOOM_BRAND_NAME',
   logoUrl: 'LOOM_BRAND_LOGO_URL',
   logoDarkUrl: 'LOOM_BRAND_LOGO_DARK_URL',
@@ -40,49 +29,48 @@ const LOOM_ENV_KEYS = {
 
 function readBrandingEnv(
   env: Record<string, string | undefined>,
-  loomKey: string,
-  velmKey: string,
+  key: string,
 ): string | undefined {
-  const value = env[loomKey] ?? env[velmKey];
+  const value = env[key];
   return value?.trim() || undefined;
 }
 
 export function brandingFromEnv(
   env: Record<string, string | undefined> = process.env,
-): Partial<VelmBranding> {
-  const branding: Partial<VelmBranding> = {};
+): Partial<LoomBranding> {
+  const branding: Partial<LoomBranding> = {};
 
-  const brandName = readBrandingEnv(env, LOOM_ENV_KEYS.brandName, ENV_KEYS.brandName);
+  const brandName = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.brandName);
   if (brandName) branding.brandName = brandName;
 
-  const logoUrl = readBrandingEnv(env, LOOM_ENV_KEYS.logoUrl, ENV_KEYS.logoUrl);
+  const logoUrl = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.logoUrl);
   if (logoUrl) branding.logoUrl = logoUrl;
 
-  const logoDarkUrl = readBrandingEnv(env, LOOM_ENV_KEYS.logoDarkUrl, ENV_KEYS.logoDarkUrl);
+  const logoDarkUrl = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.logoDarkUrl);
   if (logoDarkUrl) branding.logoDarkUrl = logoDarkUrl;
 
-  const copyrightText = readBrandingEnv(env, LOOM_ENV_KEYS.copyrightText, ENV_KEYS.copyrightText);
+  const copyrightText = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.copyrightText);
   if (copyrightText) branding.copyrightText = copyrightText;
 
-  const fontFamily = readBrandingEnv(env, LOOM_ENV_KEYS.fontFamily, ENV_KEYS.fontFamily);
+  const fontFamily = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.fontFamily);
   if (fontFamily) branding.fontFamily = fontFamily;
 
-  const fontUrl = readBrandingEnv(env, LOOM_ENV_KEYS.fontUrl, ENV_KEYS.fontUrl);
+  const fontUrl = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.fontUrl);
   if (fontUrl) branding.fontUrl = fontUrl;
 
-  const primaryColor = readBrandingEnv(env, LOOM_ENV_KEYS.primaryColor, ENV_KEYS.primaryColor);
+  const primaryColor = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.primaryColor);
   if (primaryColor) branding.primaryColor = normalizeHexColor(primaryColor);
 
-  const accentColor = readBrandingEnv(env, LOOM_ENV_KEYS.accentColor, ENV_KEYS.accentColor);
+  const accentColor = readBrandingEnv(env, LOOM_BRANDING_ENV_KEYS.accentColor);
   if (accentColor) branding.accentColor = normalizeHexColor(accentColor);
 
   return branding;
 }
 
 export function mergeBranding(
-  base: VelmBranding,
-  override?: Partial<VelmBranding>,
-): VelmBranding {
+  base: LoomBranding,
+  override?: Partial<LoomBranding>,
+): LoomBranding {
   if (!override) return { ...base };
   return {
     ...base,
@@ -93,27 +81,27 @@ export function mergeBranding(
 }
 
 export function resolveBranding(
-  moduleBranding?: Partial<VelmBranding>,
-  companyBranding?: Partial<VelmBranding>,
+  moduleBranding?: Partial<LoomBranding>,
+  companyBranding?: Partial<LoomBranding>,
   legacyTitle?: string,
-): VelmBranding {
-  const modulePartial: Partial<VelmBranding> = { ...moduleBranding };
+): LoomBranding {
+  const modulePartial: Partial<LoomBranding> = { ...moduleBranding };
   if (legacyTitle && !modulePartial.brandName) {
     modulePartial.brandName = legacyTitle;
   }
-  let resolved = mergeBranding(DEFAULT_VELM_BRANDING, modulePartial);
+  let resolved = mergeBranding(DEFAULT_LOOM_BRANDING, modulePartial);
   resolved = mergeBranding(resolved, companyBranding);
   return resolved;
 }
 
-export function buildBrandingCss(branding: VelmBranding): string {
-  const primary = normalizeHexColor(branding.primaryColor) ?? DEFAULT_VELM_BRANDING.primaryColor;
-  const accent = normalizeHexColor(branding.accentColor) ?? DEFAULT_VELM_BRANDING.accentColor;
+export function buildBrandingCss(branding: LoomBranding): string {
+  const primary = normalizeHexColor(branding.primaryColor) ?? DEFAULT_LOOM_BRANDING.primaryColor;
+  const accent = normalizeHexColor(branding.accentColor) ?? DEFAULT_LOOM_BRANDING.accentColor;
   const fontFamily = branding.fontFamily;
 
   return `/* Loom admin branding — generated at runtime */
 :root {
-  --velm-font-family: ${fontFamily};
+  --loom-font-family: ${fontFamily};
   --color-primary-500: ${primary};
   --color-primary-50: color-mix(in srgb, ${primary} 10%, white);
   --color-primary-100: color-mix(in srgb, ${primary} 20%, white);
@@ -125,12 +113,12 @@ export function buildBrandingCss(branding: VelmBranding): string {
   --color-primary-800: color-mix(in srgb, ${primary} 62%, black);
   --color-primary-900: color-mix(in srgb, ${primary} 48%, black);
   --color-primary-950: color-mix(in srgb, ${primary} 32%, black);
-  --color-velm-primary: ${primary};
-  --color-velm-primary-50: color-mix(in srgb, ${primary} 10%, white);
-  --color-velm-primary-100: color-mix(in srgb, ${primary} 20%, white);
-  --color-velm-primary-600: ${primary};
-  --color-velm-primary-700: color-mix(in srgb, ${primary} 75%, black);
-  --color-velm-primary-800: color-mix(in srgb, ${primary} 62%, black);
+  --color-loom-primary: ${primary};
+  --color-loom-primary-50: color-mix(in srgb, ${primary} 10%, white);
+  --color-loom-primary-100: color-mix(in srgb, ${primary} 20%, white);
+  --color-loom-primary-600: ${primary};
+  --color-loom-primary-700: color-mix(in srgb, ${primary} 75%, black);
+  --color-loom-primary-800: color-mix(in srgb, ${primary} 62%, black);
   --color-fg-brand: ${primary};
   --color-fg-brand-strong: color-mix(in srgb, ${primary} 62%, black);
   --color-brand-soft: color-mix(in srgb, ${primary} 20%, white);
@@ -138,12 +126,12 @@ export function buildBrandingCss(branding: VelmBranding): string {
   --color-default: color-mix(in srgb, ${primary} 35%, white);
   --color-neutral-secondary: color-mix(in srgb, ${primary} 10%, white);
   --color-neutral-tertiary: color-mix(in srgb, ${primary} 20%, white);
-  --color-velm-shell: color-mix(in srgb, color-mix(in srgb, ${primary} 10%, white) 35%, white);
-  --color-velm-accent: ${accent};
-  --color-velm-accent-50: color-mix(in srgb, ${accent} 12%, white);
-  --color-velm-accent-100: color-mix(in srgb, ${accent} 22%, white);
-  --color-velm-accent-600: ${accent};
-  --color-velm-accent-700: color-mix(in srgb, ${accent} 78%, black);
+  --color-loom-shell: color-mix(in srgb, color-mix(in srgb, ${primary} 10%, white) 35%, white);
+  --color-loom-accent: ${accent};
+  --color-loom-accent-50: color-mix(in srgb, ${accent} 12%, white);
+  --color-loom-accent-100: color-mix(in srgb, ${accent} 22%, white);
+  --color-loom-accent-600: ${accent};
+  --color-loom-accent-700: color-mix(in srgb, ${accent} 78%, black);
 }
 
 .dark {
@@ -151,7 +139,7 @@ export function buildBrandingCss(branding: VelmBranding): string {
   --color-fg-brand-strong: color-mix(in srgb, ${primary} 78%, white);
   --color-brand-soft: color-mix(in srgb, ${primary} 48%, black);
   --color-brand-softer: color-mix(in srgb, ${primary} 32%, black);
-  --color-velm-shell: var(--color-gray-800);
+  --color-loom-shell: var(--color-gray-800);
   --color-neutral-primary: var(--color-gray-900);
   --color-neutral-secondary: var(--color-gray-800);
   --color-neutral-tertiary: #151c28;
@@ -164,7 +152,7 @@ export function buildBrandingCss(branding: VelmBranding): string {
 }
 
 body {
-  font-family: var(--velm-font-family);
+  font-family: var(--loom-font-family);
 }
 `;
 }
@@ -182,6 +170,3 @@ export function normalizeHexColor(value: string): string | undefined {
   }
   return `#${hex.toLowerCase()}`;
 }
-
-export { ENV_KEYS as VELM_BRANDING_ENV_KEYS, LOOM_ENV_KEYS as LOOM_BRANDING_ENV_KEYS };
-export type LoomBranding = VelmBranding;

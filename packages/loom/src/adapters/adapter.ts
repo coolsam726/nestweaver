@@ -6,7 +6,7 @@ import type {
 } from '../core/types.js';
 import { resolveSortDirection, resolveSortField } from '../core/list-query.js';
 
-export interface VelmAdapter {
+export interface LoomAdapter {
   readonly kind: OrmKind;
   list(meta: ResourceMeta, query: ListQuery): Promise<PaginatedResult>;
   findOne(meta: ResourceMeta, id: string): Promise<Record<string, unknown>>;
@@ -22,7 +22,7 @@ export interface VelmAdapter {
   delete(meta: ResourceMeta, id: string): Promise<void>;
 }
 
-export interface DrizzleVelmDataSource {
+export interface DrizzleLoomDataSource {
   db: Record<string, unknown>;
   schema: Record<string, unknown>;
 }
@@ -34,7 +34,7 @@ export function modelKey(meta: ResourceMeta): string {
   return meta.model.name;
 }
 
-export function createNoopAdapter(): VelmAdapter {
+export function createNoopAdapter(): LoomAdapter {
   const emptyPage = {
     items: [] as Record<string, unknown>[],
     total: 0,
@@ -61,17 +61,17 @@ export function createNoopAdapter(): VelmAdapter {
   };
 }
 
-export function createVelmAdapter(
+export function createLoomAdapter(
   kind: OrmKind,
   dataSource: unknown,
-): VelmAdapter {
+): LoomAdapter {
   switch (kind) {
     case 'typeorm':
       return createTypeOrmAdapter(dataSource);
     case 'prisma':
       return createPrismaAdapter(dataSource);
     case 'drizzle':
-      return createDrizzleAdapter(dataSource as DrizzleVelmDataSource);
+      return createDrizzleAdapter(dataSource as DrizzleLoomDataSource);
     case 'mongoose':
       return createMongooseAdapter(dataSource);
     default:
@@ -79,7 +79,7 @@ export function createVelmAdapter(
   }
 }
 
-export function createTypeOrmAdapter(dataSource: unknown): VelmAdapter {
+export function createTypeOrmAdapter(dataSource: unknown): LoomAdapter {
   const source = dataSource as {
     getRepository: (entity: unknown) => TypeOrmRepository;
   };
@@ -94,7 +94,7 @@ export function createTypeOrmAdapter(dataSource: unknown): VelmAdapter {
   };
 }
 
-export function createPrismaAdapter(client: unknown): VelmAdapter {
+export function createPrismaAdapter(client: unknown): LoomAdapter {
   const prisma = client as Record<string, PrismaDelegate>;
 
   return {
@@ -107,7 +107,7 @@ export function createPrismaAdapter(client: unknown): VelmAdapter {
   };
 }
 
-export function createDrizzleAdapter(dataSource: DrizzleVelmDataSource): VelmAdapter {
+export function createDrizzleAdapter(dataSource: DrizzleLoomDataSource): LoomAdapter {
   return {
     kind: 'drizzle',
     list: (meta, query) => listDrizzle(dataSource, meta, query),
@@ -118,7 +118,7 @@ export function createDrizzleAdapter(dataSource: DrizzleVelmDataSource): VelmAda
   };
 }
 
-export function createMongooseAdapter(connection: unknown): VelmAdapter {
+export function createMongooseAdapter(connection: unknown): LoomAdapter {
   const conn = connection as MongooseConnection;
 
   return {
@@ -363,7 +363,7 @@ async function deletePrisma(
 }
 
 async function listDrizzle(
-  dataSource: DrizzleVelmDataSource,
+  dataSource: DrizzleLoomDataSource,
   meta: ResourceMeta,
   query: ListQuery,
 ): Promise<PaginatedResult> {
@@ -395,7 +395,7 @@ async function listDrizzle(
 }
 
 async function findOneDrizzle(
-  dataSource: DrizzleVelmDataSource,
+  dataSource: DrizzleLoomDataSource,
   meta: ResourceMeta,
   id: string,
 ): Promise<Record<string, unknown>> {
@@ -415,7 +415,7 @@ async function findOneDrizzle(
 }
 
 async function createDrizzle(
-  dataSource: DrizzleVelmDataSource,
+  dataSource: DrizzleLoomDataSource,
   meta: ResourceMeta,
   data: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
@@ -427,7 +427,7 @@ async function createDrizzle(
 }
 
 async function updateDrizzle(
-  dataSource: DrizzleVelmDataSource,
+  dataSource: DrizzleLoomDataSource,
   meta: ResourceMeta,
   id: string,
   data: Record<string, unknown>,
@@ -446,7 +446,7 @@ async function updateDrizzle(
 }
 
 async function deleteDrizzle(
-  dataSource: DrizzleVelmDataSource,
+  dataSource: DrizzleLoomDataSource,
   meta: ResourceMeta,
   id: string,
 ): Promise<void> {

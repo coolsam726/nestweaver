@@ -6,7 +6,7 @@
   };
 
   function listViewKey(slug) {
-    return `velm-list-view:${slug}`;
+    return `loom-list-view:${slug}`;
   }
 
   function getStoredListView(slug) {
@@ -34,13 +34,13 @@
   }
 
   function showToast(type, message, durationMs) {
-    const stack = document.getElementById('velm-toast-stack');
+    const stack = document.getElementById('loom-toast-stack');
     if (!stack) return;
 
     const toast = document.createElement('div');
     toast.setAttribute('role', 'status');
     toast.className =
-      'velm-toast pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ' +
+      'loom-toast pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ' +
       (type === 'success'
         ? 'border-default bg-success-soft text-success-strong'
         : 'border-default bg-danger-soft text-fg-danger');
@@ -77,13 +77,13 @@
   }
 
   function maybeRedirectToStoredListView() {
-    const root = document.querySelector('[data-velm-list-root]');
+    const root = document.querySelector('[data-loom-list-root]');
     if (!root) return;
 
-    const slug = root.dataset.velmListRoot;
-    const basePath = root.dataset.velmBasePath;
-    const currentView = root.dataset.velmCurrentView;
-    const hasKanban = root.dataset.velmHasKanban === 'true';
+    const slug = root.dataset.loomListRoot;
+    const basePath = root.dataset.loomBasePath;
+    const currentView = root.dataset.loomCurrentView;
+    const hasKanban = root.dataset.loomHasKanban === 'true';
     if (!slug || !basePath || !hasKanban) return;
 
     const preferred = getStoredListView(slug);
@@ -94,27 +94,27 @@
   }
 
   function applyListHrefs() {
-    const basePath = document.body.dataset.velmBasePath;
+    const basePath = document.body.dataset.loomBasePath;
     if (!basePath) return;
 
-    document.querySelectorAll('[data-velm-list-href]').forEach((el) => {
-      const slug = el.getAttribute('data-velm-list-href');
+    document.querySelectorAll('[data-loom-list-href]').forEach((el) => {
+      const slug = el.getAttribute('data-loom-list-href');
       if (!slug || !(el instanceof HTMLAnchorElement)) return;
       el.href = listPath(basePath, slug, getStoredListView(slug));
     });
   }
 
   function bindListViewSwitcher() {
-    document.querySelectorAll('[data-velm-list-view]').forEach((el) => {
+    document.querySelectorAll('[data-loom-list-view]').forEach((el) => {
       el.addEventListener('click', () => {
-        const slug = el.getAttribute('data-velm-list-view-slug');
-        const view = el.getAttribute('data-velm-list-view');
+        const slug = el.getAttribute('data-loom-list-view-slug');
+        const view = el.getAttribute('data-loom-list-view');
         if (slug && view) setStoredListView(slug, view);
       });
     });
   }
 
-  window.VelmUI = {
+  window.LoomUI = {
     showToast,
     getStoredListView,
     setStoredListView,
@@ -123,7 +123,7 @@
   };
 
   document.addEventListener('alpine:init', () => {
-    Alpine.data('velmDialogHost', () => ({
+    Alpine.data('loomDialogHost', () => ({
       open: false,
       loading: false,
       confirmMode: false,
@@ -254,7 +254,7 @@
       },
 
       bindForm(root) {
-        const form = root.querySelector('form[data-velm-embed-form]');
+        const form = root.querySelector('form[data-loom-embed-form]');
         if (!form) return;
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
@@ -293,7 +293,7 @@
         const error = url.searchParams.get('error');
         this.close();
 
-        const basePath = document.body.dataset.velmBasePath || '';
+        const basePath = document.body.dataset.loomBasePath || '';
         const slug =
           this.resourceSlug ||
           resourceSlugFromUrl(basePath, url.pathname) ||
@@ -328,7 +328,7 @@
     applyListHrefs();
     bindListViewSwitcher();
 
-    const flash = document.getElementById('velm-initial-flash');
+    const flash = document.getElementById('loom-initial-flash');
     if (flash) {
       try {
         const data = JSON.parse(flash.textContent || 'null');

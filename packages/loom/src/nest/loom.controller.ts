@@ -14,45 +14,45 @@ import { buildListViews, showListViewSwitcher, type ListViewId, type ListViewQue
 import { buildPaginationContext, normalizeListQuery } from '../core/list-query.js';
 import { buildBrandingCss } from '../core/branding.js';
 import type { ResourceMeta, SortDirection } from '../core/types.js';
-import { velmAdminCssPath, velmUiJsPath } from './paths.js';
-import { VelmService } from './velm.service.js';
-import { VelmViewService } from './velm-view.service.js';
+import { loomAdminCssPath, loomUiJsPath } from './paths.js';
+import { LoomService } from './loom.service.js';
+import { LoomViewService } from './loom-view.service.js';
 
-export function createVelmController(basePath = '/admin'): new (...args: never[]) => object {
+export function createLoomController(basePath = '/admin'): new (...args: never[]) => object {
   const route = basePath.replace(/^\//, '') || 'admin';
 
   @Controller(route)
-  class VelmController {
+  class LoomController {
     constructor(
-      private readonly velm: VelmService,
-      private readonly views: VelmViewService,
+      private readonly loom: LoomService,
+      private readonly views: LoomViewService,
     ) {}
 
     @Get('assets/branding.css')
     @Header('Content-Type', 'text/css; charset=utf-8')
     @Header('Cache-Control', 'no-cache')
     brandingCss(): string {
-      return buildBrandingCss(this.velm.branding);
+      return buildBrandingCss(this.loom.branding);
     }
 
-    @Get('assets/velm-ui.js')
+    @Get('assets/loom-ui.js')
     @Header('Content-Type', 'application/javascript; charset=utf-8')
     @Header('Cache-Control', 'no-cache')
-    velmUi(): string {
-      return readFileSync(velmUiJsPath(), 'utf8');
+    loomUi(): string {
+      return readFileSync(loomUiJsPath(), 'utf8');
     }
 
     @Get('assets/admin.css')
     @Header('Content-Type', 'text/css; charset=utf-8')
     @Header('Cache-Control', 'no-cache')
     adminCss(): string {
-      return readFileSync(velmAdminCssPath(), 'utf8');
+      return readFileSync(loomAdminCssPath(), 'utf8');
     }
 
     @Get()
     @Header('Content-Type', 'text/html; charset=utf-8')
     dashboard(@Query('success') success?: string, @Query('error') error?: string): string {
-      return this.views.render('dashboard', shellContext(this.velm, {
+      return this.views.render('dashboard', shellContext(this.loom, {
         pageTitle: 'Dashboard',
         pageSubtitle: 'Select an application to get started.',
         flash: flashFromQuery(success, error),
@@ -67,10 +67,10 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Query('success') success?: string,
       @Query('error') error?: string,
     ): Promise<string> {
-      const meta = this.velm.meta(resource);
+      const meta = this.loom.meta(resource);
       if (!meta.kanban) {
-        const result = await this.velm.list(resource, { page: 1, perPage: 100, search });
-        return this.views.render('list', shellContext(this.velm, {
+        const result = await this.loom.list(resource, { page: 1, perPage: 100, search });
+        return this.views.render('list', shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.label,
           pageSubtitle: `${result.total} records`,
@@ -78,16 +78,16 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
           resource: meta,
           result,
           query: { search },
-          ...listViewContext(this.velm, meta, 'table', { search }),
+          ...listViewContext(this.loom, meta, 'table', { search }),
         }));
       }
-      const result = await this.velm.list(resource, {
+      const result = await this.loom.list(resource, {
         page: 1,
         perPage: meta.kanban.groupBy ? 500 : 100,
         search,
       });
       const columns = groupKanbanRecords(result.items, meta.kanban.groupBy);
-      return this.views.render('kanban', shellContext(this.velm, {
+      return this.views.render('kanban', shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: meta.kanban.title ?? meta.label,
         pageSubtitle: 'Kanban view',
@@ -97,7 +97,7 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
         columns,
         query: { search },
         flash: flashFromQuery(success, error),
-        ...listViewContext(this.velm, meta, 'kanban', { search }),
+        ...listViewContext(this.loom, meta, 'kanban', { search }),
       }));
     }
 
@@ -113,10 +113,10 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Query('success') success?: string,
       @Query('error') error?: string,
     ): Promise<string> {
-      const meta = this.velm.meta(resource);
+      const meta = this.loom.meta(resource);
       const query = normalizeListQuery({ page, perPage, search, sort, direction });
-      const result = await this.velm.list(resource, query);
-      return this.views.render('list', shellContext(this.velm, {
+      const result = await this.loom.list(resource, query);
+      return this.views.render('list', shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: meta.label,
         pageSubtitle: `${result.total} records`,
@@ -124,9 +124,9 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
         resource: meta,
         result,
         query,
-        pagination: buildPaginationContext(this.velm.basePath, resource, query, result),
+        pagination: buildPaginationContext(this.loom.basePath, resource, query, result),
         flash: flashFromQuery(success, error),
-        ...listViewContext(this.velm, meta, 'table', query),
+        ...listViewContext(this.loom, meta, 'table', query),
       }));
     }
 
@@ -138,8 +138,8 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Query('success') success?: string,
       @Query('error') error?: string,
     ): string {
-      const meta = this.velm.meta(resource);
-      const context = shellContext(this.velm, {
+      const meta = this.loom.meta(resource);
+      const context = shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: `Create ${meta.singularLabel}`,
         resource: meta,
@@ -159,9 +159,9 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Body() body: Record<string, unknown>,
     ): Promise<{ url: string; statusCode: number }> {
       try {
-        await this.velm.create(resource, body);
+        await this.loom.create(resource, body);
         return {
-          url: `${this.velm.basePath}/${resource}?success=created`,
+          url: `${this.loom.basePath}/${resource}?success=created`,
           statusCode: 302,
         };
       } catch (error) {
@@ -169,7 +169,7 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
           error instanceof Error ? error.message : 'Create failed',
         );
         return {
-          url: `${this.velm.basePath}/${resource}/create?error=${message}`,
+          url: `${this.loom.basePath}/${resource}/create?error=${message}`,
           statusCode: 302,
         };
       }
@@ -184,14 +184,14 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Query('error') error?: string,
       @Query('embed') embed?: string,
     ): Promise<string> {
-      const meta = this.velm.meta(resource);
-      const record = await this.velm.findOne(resource, id);
-      const context = shellContext(this.velm, {
+      const meta = this.loom.meta(resource);
+      const record = await this.loom.findOne(resource, id);
+      const context = shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: `Edit ${meta.singularLabel}`,
         resource: meta,
         record,
-        recordTitle: this.velm.recordTitle(meta, record),
+        recordTitle: this.loom.recordTitle(meta, record),
         mode: 'edit',
         id,
         readonly: false,
@@ -210,10 +210,10 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Query('error') error?: string,
       @Query('embed') embed?: string,
     ): Promise<string> {
-      const meta = this.velm.meta(resource);
-      const record = await this.velm.findOne(resource, id);
-      const pageTitle = this.velm.recordTitle(meta, record);
-      const context = shellContext(this.velm, {
+      const meta = this.loom.meta(resource);
+      const record = await this.loom.findOne(resource, id);
+      const pageTitle = this.loom.recordTitle(meta, record);
+      const context = shellContext(this.loom, {
         currentSlug: resource,
         pageTitle,
         showEditButton: !embed,
@@ -243,9 +243,9 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Body() body: Record<string, unknown>,
     ): Promise<{ url: string; statusCode: number }> {
       try {
-        await this.velm.update(resource, id, body);
+        await this.loom.update(resource, id, body);
         return {
-          url: `${this.velm.basePath}/${resource}/${id}?success=updated`,
+          url: `${this.loom.basePath}/${resource}/${id}?success=updated`,
           statusCode: 302,
         };
       } catch (error) {
@@ -253,7 +253,7 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
           error instanceof Error ? error.message : 'Update failed',
         );
         return {
-          url: `${this.velm.basePath}/${resource}/${id}/edit?error=${message}`,
+          url: `${this.loom.basePath}/${resource}/${id}/edit?error=${message}`,
           statusCode: 302,
         };
       }
@@ -266,9 +266,9 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
       @Param('id') id: string,
     ): Promise<{ url: string; statusCode: number }> {
       try {
-        await this.velm.delete(resource, id);
+        await this.loom.delete(resource, id);
         return {
-          url: `${this.velm.basePath}/${resource}?success=deleted`,
+          url: `${this.loom.basePath}/${resource}?success=deleted`,
           statusCode: 302,
         };
       } catch (error) {
@@ -276,23 +276,23 @@ export function createVelmController(basePath = '/admin'): new (...args: never[]
           error instanceof Error ? error.message : 'Delete failed',
         );
         return {
-          url: `${this.velm.basePath}/${resource}?error=${message}`,
+          url: `${this.loom.basePath}/${resource}?error=${message}`,
           statusCode: 302,
         };
       }
     }
   }
 
-  return VelmController;
+  return LoomController;
 }
 
 function listViewContext(
-  velm: VelmService,
+  loom: LoomService,
   meta: ResourceMeta,
   currentView: ListViewId,
   query: ListViewQuery = {},
 ) {
-  const listViews = buildListViews(meta, velm.basePath, currentView, query);
+  const listViews = buildListViews(meta, loom.basePath, currentView, query);
   return {
     listViews,
     currentListView: currentView,
@@ -301,30 +301,30 @@ function listViewContext(
 }
 
 function shellContext(
-  velm: VelmService,
+  loom: LoomService,
   extra: Record<string, unknown> & {
     currentSlug?: string;
     pageTitle?: string;
     resource?: ResourceMeta;
   },
 ): Record<string, unknown> {
-  const pageTitle = (extra.pageTitle as string | undefined) ?? velm.panelTitle;
-  const menu = velm.menuContext(extra.currentSlug, pageTitle);
-  const companies = velm.companies;
-  const currentCompanyId = velm.currentCompanyId;
+  const pageTitle = (extra.pageTitle as string | undefined) ?? loom.panelTitle;
+  const menu = loom.menuContext(extra.currentSlug, pageTitle);
+  const companies = loom.companies;
+  const currentCompanyId = loom.currentCompanyId;
   const currentCompany = companies.find((c) => c.id === currentCompanyId);
   return {
     title: pageTitle,
     pageTitle,
-    panelTitle: velm.panelTitle,
-    basePath: velm.basePath,
-    branding: velm.branding,
-    navGroups: velm.navigationGroups(),
+    panelTitle: loom.panelTitle,
+    basePath: loom.basePath,
+    branding: loom.branding,
+    navGroups: loom.navigationGroups(),
     companies,
     currentCompanyId,
     currentCompanyName: currentCompany?.name,
-    user: velm.user,
-    userInitial: velm.userInitial(),
+    user: loom.user,
+    userInitial: loom.userInitial(),
     ...menu,
     ...extra,
   };

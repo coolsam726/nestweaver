@@ -21,10 +21,10 @@ if (existsSync(cssSource)) {
   cpSync(cssSource, join(cssTargetDir, 'admin.css'));
 }
 
-const uiSource = join(packageRoot, 'assets', 'velm-ui.js');
+const uiSource = join(packageRoot, 'assets', 'loom-ui.js');
 if (existsSync(uiSource)) {
   mkdirSync(cssTargetDir, { recursive: true });
-  cpSync(uiSource, join(cssTargetDir, 'velm-ui.js'));
+  cpSync(uiSource, join(cssTargetDir, 'loom-ui.js'));
 }
 
 console.log('Loom assets copied to dist/');

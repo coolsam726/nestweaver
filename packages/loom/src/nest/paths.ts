@@ -4,7 +4,7 @@ import { join } from 'node:path';
 const moduleDir = __dirname;
 
 /**
- * Resolve paths relative to the Velm package root.
+ * Resolve paths relative to the Loom package root.
  * Prefers package-root `views/` and `assets/` (live in Docker dev mounts)
  * over stale copies under `dist/`.
  */
@@ -17,18 +17,18 @@ function resolvePackagePath(...segments: string[]): string {
   return join(moduleDir, '..', ...segments);
 }
 
-export function velmViewsDir(): string {
+export function loomViewsDir(): string {
   return resolvePackagePath('views');
 }
 
-export function velmAssetsDir(): string {
+export function loomAssetsDir(): string {
   return resolvePackagePath('assets');
 }
 
-export function velmAdminCssPath(): string {
-  return join(velmAssetsDir(), 'admin.css');
+export function loomAdminCssPath(): string {
+  return join(loomAssetsDir(), 'admin.css');
 }
 
-export function velmUiJsPath(): string {
-  return join(velmAssetsDir(), 'velm-ui.js');
+export function loomUiJsPath(): string {
+  return join(loomAssetsDir(), 'loom-ui.js');
 }

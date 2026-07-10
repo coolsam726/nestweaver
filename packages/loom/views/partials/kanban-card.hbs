@@ -1,8 +1,8 @@
 {{#if (eq resource.presentation.detail 'modal')}}
   <button
     type="button"
-    class="velm-card rounded-xl block w-full p-4 text-left transition hover:bg-surface-row-hover"
-    @click="$dispatch('velm-open-dialog', { url: '{{basePath}}/{{resource.slug}}/{{id}}', title: '{{kanbanCardTitle this kanban}}', slug: '{{resource.slug}}' })"
+    class="loom-card rounded-xl block w-full p-4 text-left transition hover:bg-surface-row-hover"
+    @click="$dispatch('loom-open-dialog', { url: '{{basePath}}/{{resource.slug}}/{{id}}', title: '{{kanbanCardTitle this kanban}}', slug: '{{resource.slug}}' })"
   >
     <h4 class="font-medium text-heading">{{kanbanCardTitle this kanban}}</h4>
     {{#if kanban.card.subtitleField}}
@@ -22,7 +22,7 @@
 {{else}}
   <a
     href="{{basePath}}/{{resource.slug}}/{{id}}"
-    class="velm-card rounded-xl block p-4 transition hover:bg-surface-row-hover"
+    class="loom-card rounded-xl block p-4 transition hover:bg-surface-row-hover"
   >
     <h4 class="font-medium text-heading">{{kanbanCardTitle this kanban}}</h4>
     {{#if kanban.card.subtitleField}}

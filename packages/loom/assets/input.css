@@ -18,7 +18,7 @@
   --color-primary-900: #7a280e;
   --color-primary-950: #451a0a;
 
-  /* Gray scale (PyVelm dark surfaces) */
+  /* Gray scale (Loom dark surfaces) */
   --color-gray-300: #d1d5db;
   --color-gray-400: #9ca3af;
   --color-gray-500: #6b7280;
@@ -31,22 +31,22 @@
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
 
-  /* Legacy velm-* aliases (map to primary) */
-  --color-velm-primary: #f1511b;
-  --color-velm-primary-50: #fff4f0;
-  --color-velm-primary-100: #fee9e2;
-  --color-velm-primary-600: #f1511b;
-  --color-velm-primary-700: #c94115;
-  --color-velm-primary-800: #a23512;
-  --color-velm-accent: #286291;
-  --color-velm-accent-50: #e8f0f7;
-  --color-velm-accent-100: #d1e1ef;
-  --color-velm-accent-600: #286291;
-  --color-velm-accent-700: #1f4d73;
-  --color-velm-surface: #ffffff;
-  --color-velm-muted: #64748b;
+  /* Legacy loom-* aliases (map to primary) */
+  --color-loom-primary: #f1511b;
+  --color-loom-primary-50: #fff4f0;
+  --color-loom-primary-100: #fee9e2;
+  --color-loom-primary-600: #f1511b;
+  --color-loom-primary-700: #c94115;
+  --color-loom-primary-800: #a23512;
+  --color-loom-accent: #286291;
+  --color-loom-accent-50: #e8f0f7;
+  --color-loom-accent-100: #d1e1ef;
+  --color-loom-accent-600: #286291;
+  --color-loom-accent-700: #1f4d73;
+  --color-loom-surface: #ffffff;
+  --color-loom-muted: #64748b;
 
-  /* PyVelm semantic tokens (brand-mapped to primary orange) */
+  /* Loom semantic tokens (brand-mapped to primary orange) */
   --color-body: #475569;
   --color-body-subtle: #64748b;
   --color-heading: #0f172a;
@@ -64,7 +64,7 @@
   --color-success-strong: #047857;
   --color-warning-soft: #fffbeb;
   --color-warning-strong: #b45309;
-  --color-velm-shell: color-mix(in srgb, var(--color-primary-50) 35%, #ffffff);
+  --color-loom-shell: color-mix(in srgb, var(--color-primary-50) 35%, #ffffff);
   --color-card-border: var(--color-gray-200);
   --color-surface-hover: var(--color-neutral-tertiary);
   --color-surface-header: color-mix(in srgb, var(--color-neutral-tertiary) 50%, transparent);
@@ -86,7 +86,7 @@
   --color-fg-brand-strong: var(--color-primary-400);
   --color-brand-soft: var(--color-primary-900);
   --color-brand-softer: var(--color-primary-950);
-  --color-velm-shell: var(--color-gray-800);
+  --color-loom-shell: var(--color-gray-800);
   --color-card-border: color-mix(in srgb, var(--color-gray-600) 55%, transparent);
   --color-fg-danger: #f87171;
   --color-danger-soft: #450a0a;
@@ -122,7 +122,7 @@ summary,
 select,
 input[type='checkbox'],
 input[type='radio'],
-.velm-interactive {
+.loom-interactive {
   cursor: pointer;
 }
 
@@ -157,32 +157,32 @@ button:disabled,
   font-weight: 600;
 }
 
-@utility velm-card {
+@utility loom-card {
   border-radius: 0.75rem;
   border: 1px solid var(--color-card-border);
   background-color: var(--color-neutral-primary);
 }
 
-fieldset.velm-card {
+fieldset.loom-card {
   border: 1px solid var(--color-card-border);
   margin: 0;
   min-width: 0;
   background-color: var(--color-neutral-primary);
 }
 
-:where(.dark, .dark *) .velm-card,
-:where(.dark, .dark *) fieldset.velm-card {
+:where(.dark, .dark *) .loom-card,
+:where(.dark, .dark *) fieldset.loom-card {
   background-color: var(--color-neutral-primary);
 }
 
-.velm-dialog-backdrop {
+.loom-dialog-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
   background-color: color-mix(in srgb, #000 40%, transparent);
 }
 
-.velm-dialog-panel {
+.loom-dialog-panel {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -197,7 +197,7 @@ fieldset.velm-card {
   overflow: hidden;
 }
 
-.velm-dialog-panel.is-fullscreen {
+.loom-dialog-panel.is-fullscreen {
   inset: 0.75rem !important;
   top: 0.75rem !important;
   left: 0.75rem !important;
@@ -208,7 +208,7 @@ fieldset.velm-card {
   transform: none !important;
 }
 
-.velm-dialog-header {
+.loom-dialog-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -218,14 +218,14 @@ fieldset.velm-card {
   user-select: none;
 }
 
-.velm-dialog-body {
+.loom-dialog-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 1rem;
 }
 
-.velm-dialog-footer {
+.loom-dialog-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -234,7 +234,7 @@ fieldset.velm-card {
   padding: 0.75rem 0.875rem;
 }
 
-.velm-dialog-resize-handle {
+.loom-dialog-resize-handle {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -243,7 +243,7 @@ fieldset.velm-card {
   cursor: nwse-resize;
 }
 
-#velm-toast-stack {
+#loom-toast-stack {
   position: fixed;
   top: 1rem;
   right: 1rem;
@@ -255,54 +255,54 @@ fieldset.velm-card {
   pointer-events: none;
 }
 
-.velm-toast {
+.loom-toast {
   opacity: 0;
   transform: translateX(0.5rem);
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.velm-toast.is-visible {
+.loom-toast.is-visible {
   opacity: 1;
   transform: translateX(0);
 }
 
-.velm-kanban-grid {
+.loom-kanban-grid {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
 @media (min-width: 640px) {
-  .velm-kanban-grid {
+  .loom-kanban-grid {
     grid-template-columns: repeat(
-      min(2, var(--velm-kanban-cols, 4)),
+      min(2, var(--loom-kanban-cols, 4)),
       minmax(0, 1fr)
     );
   }
 }
 
 @media (min-width: 768px) {
-  .velm-kanban-grid {
+  .loom-kanban-grid {
     grid-template-columns: repeat(
-      min(3, var(--velm-kanban-cols, 4)),
+      min(3, var(--loom-kanban-cols, 4)),
       minmax(0, 1fr)
     );
   }
 }
 
 @media (min-width: 1024px) {
-  .velm-kanban-grid {
-    grid-template-columns: repeat(var(--velm-kanban-cols, 4), minmax(0, 1fr));
+  .loom-kanban-grid {
+    grid-template-columns: repeat(var(--loom-kanban-cols, 4), minmax(0, 1fr));
   }
 }
 
-@utility velm-focus-ring {
+@utility loom-focus-ring {
   border-color: var(--color-fg-brand);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-brand) 28%, transparent);
   outline: none;
 }
 
-@utility velm-input {
+@utility loom-input {
   width: 100%;
   border-radius: 0.5rem;
   border: 1px solid var(--color-default);
@@ -318,7 +318,7 @@ fieldset.velm-card {
 
   &:focus,
   &:focus-visible {
-    @apply velm-focus-ring;
+    @apply loom-focus-ring;
   }
 
   &::placeholder {
@@ -332,7 +332,7 @@ fieldset.velm-card {
   }
 }
 
-@utility velm-select {
+@utility loom-select {
   appearance: none;
   border-radius: 0.5rem;
   border: 1px solid var(--color-default);
@@ -351,12 +351,12 @@ fieldset.velm-card {
 
   &:focus,
   &:focus-visible {
-    @apply velm-focus-ring;
+    @apply loom-focus-ring;
   }
 }
 
-select.velm-select option,
-select.velm-input option {
+select.loom-select option,
+select.loom-input option {
   background-color: var(--color-neutral-primary);
   color: var(--color-heading);
 }

@@ -15,9 +15,7 @@ export interface LoomDependencyResolution {
 const LOOM_PACKAGE_FILES = ['dist', 'views', 'assets', 'package.json'] as const;
 
 export function resolveLoomDependency(targetDir: string): LoomDependencyResolution {
-  const fromEnv =
-    process.env.NESTWEAVER_LOOM_DEP?.trim() ??
-    process.env.NESTWEAVER_VELM_DEP?.trim();
+  const fromEnv = process.env.NESTWEAVER_LOOM_DEP?.trim();
   if (fromEnv) {
     return { specifier: fromEnv };
   }

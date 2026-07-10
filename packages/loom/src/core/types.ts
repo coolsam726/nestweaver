@@ -1,5 +1,5 @@
 import type { ActionConfig } from './actions.js';
-import type { VelmBranding } from './branding.js';
+import type { LoomBranding } from './branding.js';
 import type { FormSchema } from './schema.js';
 import type { InfolistSchema } from './infolist.js';
 import type { KanbanSchema } from './kanban.js';
@@ -105,24 +105,24 @@ export interface ResourceMeta {
   presentation: ResourcePresentation;
 }
 
-export interface VelmCompany {
+export interface LoomCompany {
   id: string;
   name: string;
   /** Per-tenant branding override (merged over module/env defaults) */
-  branding?: Partial<VelmBranding>;
+  branding?: Partial<LoomBranding>;
 }
 
-export interface VelmModuleOptions {
+export interface LoomModuleOptions {
   basePath?: string;
   /** @deprecated Use `branding.brandName` */
   title?: string;
-  branding?: Partial<VelmBranding>;
+  branding?: Partial<LoomBranding>;
   orm?: OrmKind;
   resources: ResourceClass[];
   dataSource?: unknown;
-  adapter?: import('../adapters/adapter.js').VelmAdapter;
+  adapter?: import('../adapters/adapter.js').LoomAdapter;
   /** Shell chrome — company switcher */
-  companies?: VelmCompany[];
+  companies?: LoomCompany[];
   currentCompanyId?: string;
   /** Shell chrome — profile panel */
   user?: { name: string; email?: string; avatar?: string };
@@ -133,6 +133,6 @@ export type ResourceClass = {
   configure(): ResourceMeta;
 };
 
-export const VELM_OPTIONS = Symbol('VELM_OPTIONS');
-export const VELM_ADAPTER = Symbol('VELM_ADAPTER');
-export const VELM_REGISTRY = Symbol('VELM_REGISTRY');
+export const LOOM_OPTIONS = Symbol('LOOM_OPTIONS');
+export const LOOM_ADAPTER = Symbol('LOOM_ADAPTER');
+export const LOOM_REGISTRY = Symbol('LOOM_REGISTRY');

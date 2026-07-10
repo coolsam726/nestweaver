@@ -1,4 +1,4 @@
-<header class="flex items-center gap-3 px-4 md:px-6 min-h-[60px] shrink-0 bg-velm-shell sticky top-0 z-30 overflow-visible">
+<header class="flex items-center gap-3 px-4 md:px-6 min-h-[60px] shrink-0 bg-loom-shell sticky top-0 z-30 overflow-visible">
   <button
     type="button"
     @click="sidebarOpen = true"
@@ -12,7 +12,7 @@
 
   <div class="hidden md:flex flex-1 min-w-0 overflow-visible">
     <nav
-      class="velm-app-menu flex-1 min-w-0 flex flex-wrap items-center gap-1 overflow-visible"
+      class="loom-app-menu flex-1 min-w-0 flex flex-wrap items-center gap-1 overflow-visible"
       x-data="{ openKey: '' }"
       @click.outside="openKey = ''"
       @keydown.escape.window="openKey = ''"
@@ -42,7 +42,7 @@
               x-show="openKey === 'sec-{{@index}}'"
               x-cloak
               x-transition
-              class="absolute left-0 top-full z-50 mt-1 min-w-[10rem] velm-card rounded-xl shadow-lg py-1"
+              class="absolute left-0 top-full z-50 mt-1 min-w-[10rem] loom-card rounded-xl shadow-lg py-1"
             >
               {{#each children}}
                 <a href="{{href}}" class="block px-3 py-1.5 text-sm whitespace-nowrap {{#if active}}text-fg-brand font-medium bg-surface-inset{{else}}text-body hover:bg-surface-hover hover:text-heading{{/if}}">{{label}}</a>
@@ -80,7 +80,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
           </svg>
         </button>
-        <div x-show="open" x-cloak x-transition class="absolute right-0 top-full mt-2 w-56 velm-card rounded-xl shadow-lg overflow-hidden z-50">
+        <div x-show="open" x-cloak x-transition class="absolute right-0 top-full mt-2 w-56 loom-card rounded-xl shadow-lg overflow-hidden z-50">
           <ul class="py-1 text-sm">
             <li>
               <button type="button" class="w-full text-left px-3 py-1.5 text-body hover:bg-surface-hover {{#unless currentCompanyId}}text-fg-brand font-medium{{/unless}}">All companies</button>
@@ -123,7 +123,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
         </svg>
       </button>
-      <div x-show="open" x-cloak x-transition class="absolute right-0 top-full mt-2 w-56 velm-card rounded-xl shadow-lg overflow-hidden z-50">
+      <div x-show="open" x-cloak x-transition class="absolute right-0 top-full mt-2 w-56 loom-card rounded-xl shadow-lg overflow-hidden z-50">
         <div class="px-4 py-3 border-b border-default">
           <p class="text-sm font-semibold text-heading truncate">{{user.name}}</p>
           {{#if user.email}}<p class="text-xs text-body-subtle">{{user.email}}</p>{{/if}}

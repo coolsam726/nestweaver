@@ -1,5 +1,5 @@
-export { VelmModule } from './velm.module.js';
-export { VelmService } from './velm.service.js';
-export { VelmViewService } from './velm-view.service.js';
-export { createVelmController } from './velm.controller.js';
-export { velmAdminCssPath, velmAssetsDir, velmViewsDir } from './paths.js';
+export { LoomModule } from './loom.module.js';
+export { LoomService } from './loom.service.js';
+export { LoomViewService } from './loom-view.service.js';
+export { createLoomController } from './loom.controller.js';
+export { loomAdminCssPath, loomAssetsDir, loomViewsDir } from './paths.js';

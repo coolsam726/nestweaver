@@ -4,8 +4,8 @@ export {
   createNoopAdapter,
   createPrismaAdapter,
   createTypeOrmAdapter,
-  createVelmAdapter,
+  createLoomAdapter,
   modelKey,
   recordIdFrom,
-  type VelmAdapter,
+  type LoomAdapter,
 } from './adapter.js';

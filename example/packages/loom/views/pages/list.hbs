@@ -1,11 +1,11 @@
 <section
   class="space-y-4"
-  data-velm-list-root="{{resource.slug}}"
-  data-velm-base-path="{{basePath}}"
-  data-velm-current-view="table"
-  data-velm-has-kanban="{{#if resource.hasKanban}}true{{else}}false{{/if}}"
+  data-loom-list-root="{{resource.slug}}"
+  data-loom-base-path="{{basePath}}"
+  data-loom-current-view="table"
+  data-loom-has-kanban="{{#if resource.hasKanban}}true{{else}}false{{/if}}"
 >
-  <div class="velm-card rounded-xl overflow-hidden">
+  <div class="loom-card rounded-xl overflow-hidden">
     <form method="get" class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="relative min-w-0 flex-1 sm:max-w-md">
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-body-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -16,7 +16,7 @@
           name="search"
           value="{{query.search}}"
           placeholder="Search records…"
-          class="velm-input pl-9"
+          class="loom-input pl-9"
         />
         {{#if query.sort}}
           <input type="hidden" name="sort" value="{{query.sort}}" />
@@ -30,7 +30,7 @@
           id="list-per-page"
           name="perPage"
           onchange="this.form.submit()"
-          class="velm-select w-auto min-w-[4.5rem]"
+          class="loom-select w-auto min-w-[4.5rem]"
         >
           <option value="10" {{#if (eq query.perPage 10)}}selected{{/if}}>10</option>
           <option value="15" {{#if (eq query.perPage 15)}}selected{{/if}}>15</option>
@@ -84,7 +84,7 @@
                       <button
                         type="button"
                         class="text-heading hover:text-fg-brand hover:underline text-left"
-                        @click="$dispatch('velm-open-dialog', { url: '{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}', title: 'View record', slug: '{{../../resource.slug}}' })"
+                        @click="$dispatch('loom-open-dialog', { url: '{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}', title: 'View record', slug: '{{../../resource.slug}}' })"
                       >{{cellValue .. this}}</button>
                     {{else}}
                       <a href="{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}" class="text-heading hover:text-fg-brand hover:underline">{{cellValue .. this}}</a>
@@ -95,19 +95,19 @@
               <td class="px-4 py-3 text-right">
                 <div class="inline-flex items-center gap-1 text-xs">
                   {{#if (eq ../resource.presentation.detail 'modal')}}
-                    <button type="button" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover" @click="$dispatch('velm-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}', title: 'View record', slug: '{{../resource.slug}}' })">View</button>
+                    <button type="button" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}', title: 'View record', slug: '{{../resource.slug}}' })">View</button>
                   {{else}}
                     <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover">View</a>
                   {{/if}}
                   {{#if (eq ../resource.presentation.form 'modal')}}
-                    <button type="button" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover" @click="$dispatch('velm-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit', title: 'Edit record', slug: '{{../resource.slug}}' })">Edit</button>
+                    <button type="button" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit', title: 'Edit record', slug: '{{../resource.slug}}' })">Edit</button>
                   {{else}}
                     <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover">Edit</a>
                   {{/if}}
                   <button
                     type="button"
                     class="px-2 py-1 rounded-md text-fg-danger hover:bg-danger-soft"
-                    @click="$dispatch('velm-open-confirm', { title: 'Delete record?', message: 'This action cannot be undone.', action: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/delete' })"
+                    @click="$dispatch('loom-open-confirm', { title: 'Delete record?', message: 'This action cannot be undone.', action: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/delete' })"
                   >Delete</button>
                 </div>
               </td>

@@ -8,7 +8,7 @@ export class ResourceRegistry {
     for (const resourceClass of resourceClasses) {
       const meta = resourceClass.configure();
       if (this.resources.has(meta.slug)) {
-        throw new Error(`Duplicate Velm resource slug: ${meta.slug}`);
+        throw new Error(`Duplicate Loom resource slug: ${meta.slug}`);
       }
       this.resources.set(meta.slug, meta);
     }
@@ -42,7 +42,7 @@ export class ResourceRegistry {
   require(slug: string): ResourceMeta {
     const meta = this.get(slug);
     if (!meta) {
-      throw new Error(`Unknown Velm resource: ${slug}`);
+      throw new Error(`Unknown Loom resource: ${slug}`);
     }
     return meta;
   }

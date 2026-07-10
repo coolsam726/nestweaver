@@ -4,9 +4,9 @@ import { Injectable } from '@nestjs/common';
 import Handlebars from 'handlebars';
 import type { ColumnConfig, FieldConfig, ResourceMeta } from '../core/types.js';
 import { listResourcePath, type ListViewQuery } from '../core/list-query.js';
-import { velmViewsDir } from './paths.js';
+import { loomViewsDir } from './paths.js';
 
-export interface VelmLayoutContext {
+export interface LoomLayoutContext {
   title: string;
   panelTitle: string;
   basePath: string;
@@ -16,14 +16,14 @@ export interface VelmLayoutContext {
 }
 
 @Injectable()
-export class VelmViewService {
+export class LoomViewService {
   private readonly layout: Handlebars.TemplateDelegate;
   private readonly pages = new Map<string, Handlebars.TemplateDelegate>();
   private readonly partials = new Map<string, Handlebars.TemplateDelegate>();
 
   constructor() {
     this.registerHelpers();
-    const viewsDir = velmViewsDir();
+    const viewsDir = loomViewsDir();
     this.loadPartials(join(viewsDir, 'partials'));
     this.layout = this.compile(join(viewsDir, 'layouts', 'app.hbs'));
     this.loadPages(join(viewsDir, 'pages'));
@@ -32,7 +32,7 @@ export class VelmViewService {
   render(page: string, context: Record<string, unknown>, options?: { layout?: 'app' | 'bare' }): string {
     const template = this.pages.get(page);
     if (!template) {
-      throw new Error(`Velm view not found: ${page}`);
+      throw new Error(`Loom view not found: ${page}`);
     }
     const body = template(context);
     if (options?.layout === 'bare') {

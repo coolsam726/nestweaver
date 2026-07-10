@@ -138,8 +138,8 @@ export class LoomAdminModule {}
 
   const resourcesImport = `import { CompanyResource } from './company.resource';
 import { UserResource } from './user.resource';`;
-  const factoryBody = velmFactoryBody(options);
-  const extraImports = velmModuleImports(options);
+  const factoryBody = loomFactoryBody(options);
+  const extraImports = loomModuleImports(options);
 
   return `${extraImports}
 import { Module } from '@nestjs/common';
@@ -149,8 +149,8 @@ ${resourcesImport}
 @Module({
   imports: [
     LoomModule.forRootAsync({
-      ${velmAsyncImports(options)}
-      inject: [${velmInjectTokens(options)}],
+      ${loomAsyncImports(options)}
+      inject: [${loomInjectTokens(options)}],
       useFactory: ${factoryBody},
     }),
   ],
@@ -189,7 +189,7 @@ function modelRefForOrm(options: ScaffoldOptions, model: string): string {
   }
 }
 
-function velmModuleImports(options: ScaffoldOptions): string {
+function loomModuleImports(options: ScaffoldOptions): string {
   switch (options.orm) {
     case 'typeorm':
       return "import { DataSource } from 'typeorm';";
@@ -204,7 +204,7 @@ function velmModuleImports(options: ScaffoldOptions): string {
   }
 }
 
-function velmAsyncImports(options: ScaffoldOptions): string {
+function loomAsyncImports(options: ScaffoldOptions): string {
   switch (options.orm) {
     case 'typeorm':
       return 'imports: [],';
@@ -219,7 +219,7 @@ function velmAsyncImports(options: ScaffoldOptions): string {
   }
 }
 
-function velmInjectTokens(options: ScaffoldOptions): string {
+function loomInjectTokens(options: ScaffoldOptions): string {
   switch (options.orm) {
     case 'typeorm':
       return 'DataSource';
@@ -234,7 +234,7 @@ function velmInjectTokens(options: ScaffoldOptions): string {
   }
 }
 
-function velmFactoryBody(options: ScaffoldOptions): string {
+function loomFactoryBody(options: ScaffoldOptions): string {
   const title = adminTitle(options);
 
   switch (options.orm) {

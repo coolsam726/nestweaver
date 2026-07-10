@@ -11,22 +11,22 @@
   <link rel="stylesheet" href="{{basePath}}/assets/branding.css" />
   <script>
     (function () {
-      const stored = localStorage.getItem('velm-theme');
+      const stored = localStorage.getItem('loom-theme');
       if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
       }
     })();
   </script>
-  <script defer src="{{basePath}}/assets/velm-ui.js"></script>
+  <script defer src="{{basePath}}/assets/loom-ui.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
   </style>
 </head>
 <body
-  class="min-h-screen bg-velm-shell text-body antialiased flex md:flex-row"
-  x-data="velmShell()"
-  data-velm-base-path="{{basePath}}"
+  class="min-h-screen bg-loom-shell text-body antialiased flex md:flex-row"
+  x-data="loomShell()"
+  data-loom-base-path="{{basePath}}"
 >
   <div
     x-show="sidebarOpen"
@@ -57,13 +57,13 @@
   {{> dialog-host}}
 
   <script>
-    function velmShell() {
+    function loomShell() {
       return {
         sidebarOpen: false,
         toggleTheme() {
           const root = document.documentElement;
           const next = root.classList.toggle('dark');
-          localStorage.setItem('velm-theme', next ? 'dark' : 'light');
+          localStorage.setItem('loom-theme', next ? 'dark' : 'light');
         },
       };
     }

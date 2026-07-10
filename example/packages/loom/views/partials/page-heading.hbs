@@ -34,7 +34,7 @@
           <button
             type="button"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition-opacity"
-            @click="$dispatch('velm-open-dialog', { url: '{{basePath}}/{{resource.slug}}/create', title: 'Create {{resource.singularLabel}}', slug: '{{resource.slug}}' })"
+            @click="$dispatch('loom-open-dialog', { url: '{{basePath}}/{{resource.slug}}/create', title: 'Create {{resource.singularLabel}}', slug: '{{resource.slug}}' })"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
@@ -54,7 +54,7 @@
         <a href="{{basePath}}/{{resource.slug}}/{{id}}/edit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition-opacity">Edit</a>
       {{/if}}
       {{#if showBackToList}}
-        <a href="{{basePath}}/{{resource.slug}}" data-velm-list-href="{{resource.slug}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-default text-body rounded-md hover:bg-surface-hover transition">Back to list</a>
+        <a href="{{basePath}}/{{resource.slug}}" data-loom-list-href="{{resource.slug}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-default text-body rounded-md hover:bg-surface-hover transition">Back to list</a>
       {{/if}}
     </div>
   </div>
