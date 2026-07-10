@@ -120,11 +120,11 @@ export async function collectOptions(
 
   const admin = await confirm({
     message: 'Add Loom admin panel (@nestweaver/loom at /admin)?',
-    default: false,
+    default: true,
   });
 
   if (admin && orm === 'none') {
-    console.log('  Tip: add an ORM to scaffold Companies and Users resources in Velm.');
+    console.log('  Tip: add an ORM to scaffold Companies and Users resources in Loom.');
   }
 
   const frontendSummary = supportsRenderMode(frontend)
