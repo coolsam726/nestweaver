@@ -4,7 +4,7 @@ import {
   Type,
 } from '@nestjs/common';
 import { HealthController } from './health.controller';
-import { NuxtFallbackController } from './nuxt-fallback.controller';
+import { SsrFallbackController } from './ssr-fallback.controller';
 
 @Module({})
 export class AppModule {
@@ -14,7 +14,7 @@ export class AppModule {
     const controllers: Type[] = [HealthController];
 
     if (isProduction) {
-      controllers.push(NuxtFallbackController);
+      controllers.push(SsrFallbackController);
     }
 
     return {

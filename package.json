@@ -1,19 +1,19 @@
 {
-  "name": "nuxest",
+  "name": "nestweaver",
   "private": true,
-  "description": "Scaffold NestJS + Nuxt monorepos with batteries included",
+  "description": "Scaffold NestJS + multi-frontend monorepos with batteries included",
   "packageManager": "pnpm@11.10.0",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm --filter nuxest build && pnpm --filter create-nuxest build",
-    "dev": "pnpm --filter nuxest dev",
-    "create": "node packages/create-nuxest/dist/index.js",
-    "create:nuxest": "node packages/nuxest/dist/cli.js",
+    "build": "pnpm --filter nestweaver build && pnpm --filter create-nestweaver build",
+    "dev": "pnpm --filter nestweaver dev",
+    "create": "node packages/create-nestweaver/dist/index.js",
+    "create:weaver": "node packages/nestweaver/dist/cli.js",
     "dev:stack": "concurrently -n api,web -c blue,green \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
-    "test:scaffold": "node packages/nuxest/dist/test-scaffold.js",
-    "test": "pnpm build && node packages/nuxest/dist/test-scaffold.js nuxest-smoke-test"
+    "test:scaffold": "node packages/nestweaver/dist/test-scaffold.js",
+    "test": "pnpm build && node packages/nestweaver/dist/test-scaffold.js nestweaver-smoke-test"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
