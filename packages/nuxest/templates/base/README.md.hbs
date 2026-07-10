@@ -1,0 +1,37 @@
+# {{projectName}}
+
+NestJS + Nuxt 4 monorepo scaffolded with [nuxest](https://github.com/your-org/nuxest).
+
+## Quick start
+
+```bash
+cp .env.example .env   # configure DATABASE_URL / REDIS if needed
+pnpm dev
+```
+
+Open **http://localhost:3000**
+
+{{#if admin}}
+Admin panel: **http://localhost:3000/admin**
+{{/if}}
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Nest on `:3000` + Nuxt on `:3001` |
+| `pnpm build` | Production build |
+| `pnpm start:prod` | Run production server |
+| `pnpm test` | API tests |
+
+## Structure
+
+```
+apps/api          NestJS backend (HTTP entry, /api/*)
+apps/web          Nuxt 4 frontend ({{nuxtMode}})
+packages/shared   Shared TypeScript types
+```
+
+## Docs
+
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for routing, dev proxy, and SSR/SPA notes.
