@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Company, CompanySchema } from './company.schema';
 import { User, UserSchema } from './user.schema';
-import { SeedService } from './seed.service';
 
 @Module({
   imports: [
@@ -12,7 +11,6 @@ import { SeedService } from './seed.service';
       { name: User.name, schema: UserSchema },
     ]),
   ],
-  providers: [SeedService],
   exports: [MongooseModule],
 })
 export class DatabaseModule {}

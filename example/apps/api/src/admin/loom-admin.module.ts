@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { LoomModule, brandingFromEnv } from '@nestweaver/loom';
 import { CompanyResource } from './company.resource';
 import { UserResource } from './user.resource';
+import { DemoSeedService } from './demo-seed.service';
 
 @Module({
   imports: [
@@ -25,5 +26,6 @@ import { UserResource } from './user.resource';
       }),
     }),
   ],
+  providers: [DemoSeedService],
 })
 export class LoomAdminModule {}
