@@ -1,6 +1,12 @@
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+
+const NESTWEAVER_PACKAGE_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
 
 export interface VelmDependencyResolution {
   specifier: string;
@@ -25,10 +31,12 @@ export function resolveVelmDependency(targetDir: string): VelmDependencyResoluti
 }
 
 /** Copy a built @weaver/velm into the scaffold project for Docker/local self-containment. */
-export function vendorVelmPackage(targetDir: string): boolean {
+export function vendorVelmPackage(targetDir: string): void {
   const sourceDir = findSourceVelmPackage(targetDir);
   if (!sourceDir) {
-    return false;
+    throw new Error(
+      'Cannot vendor @weaver/velm: source package not found. Set NESTWEAVER_VELM_DEP or run from the nestweaver monorepo.',
+    );
   }
 
   ensureVelmBuilt(sourceDir);
@@ -43,8 +51,6 @@ export function vendorVelmPackage(targetDir: string): boolean {
     }
     cpSync(from, join(destDir, item), { recursive: true });
   }
-
-  return true;
 }
 
 function ensureVelmBuilt(velmDir: string): void {
@@ -56,14 +62,21 @@ function ensureVelmBuilt(velmDir: string): void {
   execSync('pnpm build && pnpm build:css', { cwd: velmDir, stdio: 'inherit' });
 }
 
-export function findSourceVelmPackage(targetDir: string): string | null {
-  const vendoredDir = join(targetDir, 'packages', 'velm');
-  let dir = targetDir;
+function monorepoVelmPackage(): string | null {
+  const candidate = join(NESTWEAVER_PACKAGE_DIR, '..', 'velm');
+  if (existsSync(join(candidate, 'package.json'))) {
+    return candidate;
+  }
+  return null;
+}
+
+function walkUpForVelm(startDir: string, excludeDir?: string): string | null {
+  let dir = startDir;
 
   while (true) {
     const candidate = join(dir, 'packages', 'velm');
     if (
-      candidate !== vendoredDir &&
+      (!excludeDir || resolve(candidate) !== resolve(excludeDir)) &&
       existsSync(join(candidate, 'package.json'))
     ) {
       return candidate;
@@ -75,4 +88,12 @@ export function findSourceVelmPackage(targetDir: string): string | null {
     }
     dir = parent;
   }
+}
+
+export function findSourceVelmPackage(targetDir: string): string | null {
+  return (
+    monorepoVelmPackage() ??
+    walkUpForVelm(targetDir, join(targetDir, 'packages', 'velm')) ??
+    walkUpForVelm(process.cwd())
+  );
 }
