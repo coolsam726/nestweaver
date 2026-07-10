@@ -15,28 +15,18 @@ function webDevTarget(): string {
 }`;
 
 export function generateMain(options: ScaffoldOptions): string {
-  const adminSetupExpress =
-    options.admin && options.httpAdapter === 'express'
-      ? `
-  app.setBaseViewsDir(join(__dirname, 'views'));
-  app.setViewEngine('hbs');`
-      : '';
-
   if (options.httpAdapter === 'express') {
     return isSsrFrontend(options)
-      ? generateExpressSsrMain(adminSetupExpress, options)
-      : generateExpressSpaMain(adminSetupExpress, options);
+      ? generateExpressSsrMain(options)
+      : generateExpressSpaMain(options);
   }
 
   return isSsrFrontend(options)
-    ? generateFastifySsrMain(options.admin, options)
-    : generateFastifySpaMain(options.admin, options);
+    ? generateFastifySsrMain(options)
+    : generateFastifySpaMain(options);
 }
 
-function generateExpressSsrMain(
-  adminSetup: string,
-  options: ScaffoldOptions,
-): string {
+function generateExpressSsrMain(options: ScaffoldOptions): string {
   const ssr = ssrProductionBlocks(options, 'express');
 
   return `import { existsSync } from 'node:fs';
@@ -64,7 +54,6 @@ async function bootstrap() {
     AppModule.register(),
   );
   app.enableShutdownHooks();
-${adminSetup}
 
   let devProxy:
     | (RequestHandler & {
@@ -363,10 +352,7 @@ function spaResolveBlock(options: ScaffoldOptions): {
   };
 }
 
-function generateExpressSpaMain(
-  adminSetup: string,
-  options: ScaffoldOptions,
-): string {
+function generateExpressSpaMain(options: ScaffoldOptions): string {
   const spa = spaResolveBlock(options);
 
   return `import { existsSync, readFileSync } from 'node:fs';
@@ -393,7 +379,6 @@ async function bootstrap() {
     AppModule.register(),
   );
   app.enableShutdownHooks();
-${adminSetup}
 
   let devProxy:
     | (RequestHandler & {
@@ -463,19 +448,7 @@ void bootstrap();
 `;
 }
 
-function generateFastifySsrMain(
-  admin: boolean,
-  options: ScaffoldOptions,
-): string {
-  const adminRegister = admin
-    ? `
-  await fastify.register(fastifyView, {
-    engine: { handlebars },
-    root: join(__dirname, 'views'),
-    layout: 'layouts/main.hbs',
-  });`
-    : '';
-
+function generateFastifySsrMain(options: ScaffoldOptions): string {
   const ssr = ssrProductionBlocks(options, 'fastify');
 
   return `import { existsSync } from 'node:fs';
@@ -489,11 +462,7 @@ import {
 } from '@nestjs/platform-fastify';
 import middie from '@fastify/middie';
 import fastifyStatic from '@fastify/static';
-import type { FastifyInstance } from 'fastify';${
-    admin
-      ? `\nimport fastifyView from '@fastify/view';\nimport handlebars from 'handlebars';`
-      : ''
-  }
+import type { FastifyInstance } from 'fastify';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import { AppModule } from './app.module';
@@ -521,7 +490,6 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const fastify = app.getHttpAdapter().getInstance();
-${adminRegister}
 
   let devProxy:
     | (RequestHandler & {
@@ -591,19 +559,7 @@ void bootstrap();
 `;
 }
 
-function generateFastifySpaMain(
-  admin: boolean,
-  options: ScaffoldOptions,
-): string {
-  const adminRegister = admin
-    ? `
-  await fastify.register(fastifyView, {
-    engine: { handlebars },
-    root: join(__dirname, 'views'),
-    layout: 'layouts/main.hbs',
-  });`
-    : '';
-
+function generateFastifySpaMain(options: ScaffoldOptions): string {
   const spa = spaResolveBlock(options);
 
   return `import { existsSync, readFileSync } from 'node:fs';
@@ -616,11 +572,7 @@ import {
 } from '@nestjs/platform-fastify';
 import middie from '@fastify/middie';
 import fastifyStatic from '@fastify/static';
-import type { FastifyInstance } from 'fastify';${
-    admin
-      ? `\nimport fastifyView from '@fastify/view';\nimport handlebars from 'handlebars';`
-      : ''
-  }
+import type { FastifyInstance } from 'fastify';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import { AppModule } from './app.module';
@@ -648,7 +600,6 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const fastify = app.getHttpAdapter().getInstance();
-${adminRegister}
 
   let devProxy:
     | (RequestHandler & {

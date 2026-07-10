@@ -1,4 +1,4 @@
-import { rmSync, existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { scaffoldProject } from './scaffold.js';
 import type { ScaffoldOptions } from './types.js';
 

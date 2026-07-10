@@ -1,4 +1,5 @@
 import type { ScaffoldOptions } from '../types.js';
+import { resolveVelmDependency } from './velm-dependency.js';
 
 type Deps = Record<string, string>;
 
@@ -61,15 +62,19 @@ const QUEUES: Deps = {
   ioredis: '^5.6.0',
 };
 
-const ADMIN: Record<ScaffoldOptions['httpAdapter'], Deps> = {
-  express: {
-    hbs: '^4.2.0',
-  },
-  fastify: {
-    '@fastify/view': '^10.0.1',
-    handlebars: '^4.7.8',
-  },
+const ADMIN_BASE: Deps = {
+  handlebars: '^4.7.8',
 };
+
+function adminDeps(options: ScaffoldOptions): Deps {
+  if (!options.admin) {
+    return {};
+  }
+  return {
+    ...ADMIN_BASE,
+    '@weaver/velm': resolveVelmDependency(options.targetDir).specifier,
+  };
+}
 
 const DEV_BASE: Deps = {
   '@eslint/eslintrc': '^3.2.0',
@@ -134,7 +139,7 @@ export function generateApiPackageJson(
 
   if (options.scheduling) Object.assign(deps, SCHEDULING);
   if (options.queues) Object.assign(deps, QUEUES);
-  if (options.admin) Object.assign(deps, ADMIN[options.httpAdapter]);
+  if (options.admin) Object.assign(deps, adminDeps(options));
 
   const devDeps = merge(DEV_BASE, DEV_HTTP[options.httpAdapter]);
   if (options.orm !== 'none') {
