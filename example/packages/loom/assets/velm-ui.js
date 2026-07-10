@@ -40,7 +40,7 @@
     const toast = document.createElement('div');
     toast.setAttribute('role', 'status');
     toast.className =
-      'pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg transition ' +
+      'velm-toast pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ' +
       (type === 'success'
         ? 'border-default bg-success-soft text-success-strong'
         : 'border-default bg-danger-soft text-fg-danger');
@@ -51,13 +51,13 @@
     `;
 
     const dismiss = () => {
-      toast.classList.add('opacity-0', 'translate-x-2');
+      toast.classList.remove('is-visible');
       setTimeout(() => toast.remove(), 180);
     };
 
     toast.querySelector('button')?.addEventListener('click', dismiss);
     stack.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-x-2'));
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
     setTimeout(dismiss, durationMs ?? 4200);
   }
 
@@ -293,17 +293,19 @@
         const error = url.searchParams.get('error');
         this.close();
 
-        if (success || error) {
-          showToast(success ? 'success' : 'error', resolveFlashMessage(success || error || ''));
-        }
-
         const basePath = document.body.dataset.velmBasePath || '';
         const slug =
           this.resourceSlug ||
           resourceSlugFromUrl(basePath, url.pathname) ||
           '';
         if (slug) {
-          window.location.assign(listPath(basePath, slug, getStoredListView(slug)));
+          const target = new URL(
+            listPath(basePath, slug, getStoredListView(slug)),
+            window.location.origin,
+          );
+          if (success) target.searchParams.set('success', success);
+          if (error) target.searchParams.set('error', error);
+          window.location.assign(`${target.pathname}${target.search}`);
           return;
         }
         window.location.assign(url.pathname + url.search);

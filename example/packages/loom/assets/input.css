@@ -255,10 +255,15 @@ fieldset.velm-card {
   pointer-events: none;
 }
 
-#velm-toast-stack > div {
+.velm-toast {
   opacity: 0;
   transform: translateX(0.5rem);
   transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.velm-toast.is-visible {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .velm-kanban-grid {
