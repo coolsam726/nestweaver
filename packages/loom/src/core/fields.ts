@@ -1,4 +1,4 @@
-import type { ColumnConfig, FieldConfig, FieldType } from './types.js';
+import type { ColumnConfig, ColumnSpan, FieldConfig, FieldType } from './types.js';
 
 abstract class Configurable<T> {
   protected config: T;
@@ -58,6 +58,50 @@ abstract class FieldBase<T extends FieldConfig> extends Configurable<T> {
     return this;
   }
 
+  disabled(value = true): this {
+    this.config.disabled = value;
+    return this;
+  }
+
+  default(value: unknown): this {
+    this.config.default = value;
+    return this;
+  }
+
+  prefix(value: string): this {
+    this.config.prefix = value;
+    return this;
+  }
+
+  suffix(value: string): this {
+    this.config.suffix = value;
+    return this;
+  }
+
+  autofocus(value = true): this {
+    this.config.autofocus = value;
+    return this;
+  }
+
+  columnSpan(value: number | 'full'): this {
+    this.config.columnSpan = value;
+    return this;
+  }
+
+  columnSpanFull(): this {
+    this.config.columnSpan = 'full';
+    return this;
+  }
+
+  columnStart(value: number): this {
+    this.config.columnStart = value;
+    return this;
+  }
+
+  hint(value: string): this {
+    return this.help(value);
+  }
+
   createOnly(value = true): this {
     this.config.createOnly = value;
     return this;
@@ -99,6 +143,11 @@ export class TextareaField extends FieldBase<FieldConfig> {
   static make(name: string): TextareaField {
     return new TextareaField(baseField(name, 'textarea'));
   }
+
+  rows(value: number): this {
+    this.config.rows = value;
+    return this;
+  }
 }
 
 export class NumberField extends FieldBase<FieldConfig> {
@@ -109,6 +158,21 @@ export class NumberField extends FieldBase<FieldConfig> {
   static make(name: string): NumberField {
     return new NumberField(baseField(name, 'number'));
   }
+
+  min(value: number): this {
+    this.config.min = value;
+    return this;
+  }
+
+  max(value: number): this {
+    this.config.max = value;
+    return this;
+  }
+
+  step(value: number): this {
+    this.config.step = value;
+    return this;
+  }
 }
 
 export class BooleanField extends FieldBase<FieldConfig> {
@@ -118,6 +182,21 @@ export class BooleanField extends FieldBase<FieldConfig> {
 
   static make(name: string): BooleanField {
     return new BooleanField(baseField(name, 'boolean'));
+  }
+
+  inline(value = true): this {
+    this.config.inline = value;
+    return this;
+  }
+
+  trueLabel(value: string): this {
+    this.config.trueLabel = value;
+    return this;
+  }
+
+  falseLabel(value: string): this {
+    this.config.falseLabel = value;
+    return this;
   }
 }
 
@@ -165,9 +244,23 @@ export class RelationField extends FieldBase<FieldConfig> {
     return new RelationField(baseField(name, 'relation'));
   }
 
-  to(resource: string, labelField: string): this {
-    this.config.relation = { resource, labelField };
+  /**
+   * Many-to-one: store foreign key, pick one related record.
+   * `labelField` is the related attribute to show (default `name`).
+   */
+  manyToOne(resource: string, labelField = 'displayName'): this {
+    this.config.relation = {
+      kind: 'many2one',
+      resource,
+      labelField,
+      foreignKey: this.config.name,
+    };
     return this;
+  }
+
+  /** @deprecated Use `manyToOne` */
+  to(resource: string, labelField: string): this {
+    return this.manyToOne(resource, labelField);
   }
 }
 
@@ -224,6 +317,21 @@ abstract class ColumnBase<T extends ColumnConfig> extends Configurable<T> {
 
   sortable(value = true): this {
     this.config.sortable = value;
+    return this;
+  }
+
+  columnSpan(value: number | 'full'): this {
+    this.config.columnSpan = value;
+    return this;
+  }
+
+  columnSpanFull(): this {
+    this.config.columnSpan = 'full';
+    return this;
+  }
+
+  columnStart(value: number): this {
+    this.config.columnStart = value;
     return this;
   }
 }
@@ -288,12 +396,67 @@ export class DateTimeColumn extends ColumnBase<ColumnConfig> {
   }
 }
 
+export class RelationColumn extends ColumnBase<ColumnConfig> {
+  private constructor(config: ColumnConfig) {
+    super(config);
+  }
+
+  /**
+   * Create a relation column.
+   * - `RelationColumn.make('companyId').manyToOne('companies', 'name')`
+   * - `RelationColumn.make('company.email').manyToOne('companies')` — FK `companyId`, display `email`
+   */
+  static make(name: string): RelationColumn {
+    const col = new RelationColumn(baseColumn(name, 'relation'));
+    const dotted = parseRelationDisplayName(name);
+    if (dotted) {
+      col.config.label = humanize(dotted.relationKey);
+      col.config.relation = {
+        kind: 'many2one',
+        resource: '',
+        labelField: dotted.displayField,
+        foreignKey: dotted.foreignKey,
+      };
+    }
+    return col;
+  }
+
+  manyToOne(resource: string, labelField?: string): this {
+    const existing = this.config.relation;
+    const dotted = parseRelationDisplayName(this.config.name);
+    this.config.relation = {
+      kind: 'many2one',
+      resource,
+      labelField: labelField ?? existing?.labelField ?? dotted?.displayField ?? 'displayName',
+      foreignKey: existing?.foreignKey ?? dotted?.foreignKey ?? this.config.name,
+    };
+    return this;
+  }
+}
+
+/** `company.email` → relationKey company, FK companyId, display email */
+export function parseRelationDisplayName(name: string): {
+  relationKey: string;
+  displayField: string;
+  foreignKey: string;
+} | null {
+  if (!name.includes('.')) return null;
+  const [relationKey, ...rest] = name.split('.');
+  if (!relationKey || rest.length === 0) return null;
+  return {
+    relationKey,
+    displayField: rest.join('.'),
+    foreignKey: `${relationKey}Id`,
+  };
+}
+
 export type Column =
   | IdColumn
   | TextColumn
   | BooleanColumn
   | DateColumn
-  | DateTimeColumn;
+  | DateTimeColumn
+  | RelationColumn;
 
 export function resolveColumns(columns: Column[]): ColumnConfig[] {
   return columns.map((column) => column.build());

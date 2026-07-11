@@ -5,7 +5,7 @@ export interface SchemaSection {
   name: string;
   title: string;
   description?: string;
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | 4;
   fields: FieldConfig[];
 }
 
@@ -25,7 +25,7 @@ export class FormSchemaBuilder {
     return this;
   }
 
-  columns(count: 1 | 2 | 3): this {
+  columns(count: 1 | 2 | 3 | 4): this {
     if (this.current) this.current.columns = count;
     return this;
   }

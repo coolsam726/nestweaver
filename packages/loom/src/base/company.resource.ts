@@ -41,7 +41,7 @@ export abstract class CompanyResourceBase extends Resource {
         TextField.make('code').searchable().placeholder('ACME'),
         EmailField.make('email'),
         TextField.make('phone'),
-        BooleanField.make('active').label('Active'),
+        BooleanField.make('active').label('Active').inline(),
       );
     return schema.build();
   }

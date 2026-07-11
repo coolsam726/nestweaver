@@ -26,6 +26,8 @@ import type {
 import { InfolistBuilder } from './infolist.js';
 import { KanbanBuilder } from './kanban.js';
 
+import { computeDisplayName } from './display-name.js';
+
 export type { FormSchema } from './schema.js';
 export type { InfolistSchema } from './infolist.js';
 export type { KanbanSchema } from './kanban.js';
@@ -148,13 +150,10 @@ export abstract class Resource {
   }
 
   static recordTitle(record: Record<string, unknown>): string {
-    const field = this.recordTitleField;
-    const value = record[field] ?? record.name ?? record.title ?? record.email;
-    if (value !== undefined && value !== null && value !== '') {
-      return String(value);
-    }
-    const id = record.id ?? record._id;
-    return id ? `#${id}` : 'Record';
+    return (
+      computeDisplayName(record, this.recordTitleField) ||
+      (record.id || record._id ? `#${record.id ?? record._id}` : 'Record')
+    );
   }
 }
 

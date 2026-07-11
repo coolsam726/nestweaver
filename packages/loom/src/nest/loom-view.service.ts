@@ -2,7 +2,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import Handlebars from 'handlebars';
+import type { LoomFlash } from '../core/flash.js';
 import type { ColumnConfig, FieldConfig, ResourceMeta } from '../core/types.js';
+import { relationLabel, type RelationLabelMap } from '../core/relations.js';
+import { resolveGridItemStyle } from '../core/layout.js';
 import { listResourcePath, type ListViewQuery } from '../core/list-query.js';
 import { loomViewsDir } from './paths.js';
 
@@ -12,7 +15,7 @@ export interface LoomLayoutContext {
   basePath: string;
   resources: ResourceMeta[];
   resource?: ResourceMeta;
-  flash?: { type: 'success' | 'error'; message: string };
+  flash?: LoomFlash;
 }
 
 @Injectable()
@@ -75,34 +78,134 @@ export class LoomViewService {
     Handlebars.registerHelper('and', (a: unknown, b: unknown) => Boolean(a && b));
     Handlebars.registerHelper('not', (value: unknown) => !value);
     Handlebars.registerHelper('json', (value: unknown) => JSON.stringify(value));
-    Handlebars.registerHelper('fieldValue', (record: Record<string, unknown>, field: FieldConfig) => {
+    Handlebars.registerHelper('jsonAttr', (value: unknown) => {
+      return JSON.stringify(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;');
+    });
+    Handlebars.registerHelper('gridItemStyle', (item: { columnSpan?: number | 'full'; columnStart?: number }, sectionColumns: number) => {
+      return resolveGridItemStyle(item ?? {}, (sectionColumns || 1) as 1 | 2 | 3 | 4);
+    });
+    Handlebars.registerHelper('m2oConfig', (root: Record<string, unknown>, field: FieldConfig) => {
+      const resource = root.resource as ResourceMeta | undefined;
+      const slug = resource?.slug ?? '';
+      const basePath = String(root.basePath ?? '');
+      const fieldName = field.name;
+      const relation = field.relation;
+      const contexts = root.relationFieldContexts as Record<string, { singularLabel?: string }> | undefined;
+      const labels = root.relationLabels as RelationLabelMap | undefined;
+      const options = root.relationOptions as Record<string, Array<{ value: string; label: string }>> | undefined;
+      const record = (root.record ?? {}) as Record<string, unknown>;
+      const rawId = record[fieldName];
+      const id =
+        rawId !== null && rawId !== undefined && rawId !== '' ? String(rawId) : null;
+      const fromOptions =
+        id && options?.[fieldName]
+          ? options[fieldName].find((item) => String(item.value) === id)?.label
+          : '';
+      const label = id ? labels?.[fieldName]?.[id] ?? fromOptions ?? '' : '';
+      return {
+        name: fieldName,
+        relatedResource: relation?.resource ?? '',
+        singularLabel: contexts?.[fieldName]?.singularLabel ?? relation?.resource ?? 'Record',
+        searchUrl: `${basePath}/${slug}/relation-search?field=${encodeURIComponent(fieldName)}`,
+        quickCreateUrl: `${basePath}/${slug}/relation-quick-create`,
+        createUrl: `${basePath}/${relation?.resource ?? ''}/create`,
+        detailUrlBase: `${basePath}/${relation?.resource ?? ''}`,
+        initialId: id,
+        initialLabel: label,
+        readonly: Boolean(root.readonly) || Boolean(field.disabled),
+        required: Boolean(field.required),
+      };
+    });
+    Handlebars.registerHelper('fieldChecked', (record: Record<string, unknown>, field: FieldConfig) => {
       const value = record[field.name];
-      if (value === null || value === undefined) return '';
-      if (field.type === 'boolean') return value ? 'Yes' : 'No';
-      return String(value);
+      if (value === true || value === 'true' || value === '1' || value === 1) return true;
+      if (value === false || value === 'false' || value === '0' || value === 0) return false;
+      if (field.default === true || field.default === 'true') return true;
+      return false;
     });
-    Handlebars.registerHelper('cellValue', (record: Record<string, unknown>, column: ColumnConfig) => {
-      const value = record[column.name];
-      if (value === null || value === undefined) return '';
-      if (column.format === 'boolean' || column.type === 'boolean') {
-        return value ? 'Yes' : 'No';
-      }
-      if (column.format === 'date' || column.format === 'datetime') {
-        const date = new Date(String(value));
-        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
-      }
-      return String(value);
-    });
-    Handlebars.registerHelper('entryValue', (record: Record<string, unknown>, entry: { name: string; format?: string }) => {
-      const value = record[entry.name];
-      if (value === null || value === undefined) return '—';
-      if (entry.format === 'boolean') return value ? 'Yes' : 'No';
-      if (entry.format === 'date' || entry.format === 'datetime') {
-        const date = new Date(String(value));
-        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
-      }
-      return String(value);
-    });
+    Handlebars.registerHelper(
+      'fieldValue',
+      function (
+        record: Record<string, unknown>,
+        field: FieldConfig,
+        options: { data?: { root?: { relationLabels?: RelationLabelMap } } },
+      ) {
+        const labels = options?.data?.root?.relationLabels;
+        if (field.type === 'relation' || field.relation) {
+          return relationLabel(field.name, record, labels, field.relation) || '—';
+        }
+        const value = record[field.name];
+        if (value === null || value === undefined) return '';
+        if (field.type === 'boolean') return value ? 'Yes' : 'No';
+        return String(value);
+      },
+    );
+    Handlebars.registerHelper(
+      'cellValue',
+      function (
+        record: Record<string, unknown>,
+        column: ColumnConfig,
+        options: { data?: { root?: { relationLabels?: RelationLabelMap } } },
+      ) {
+        const labels = options?.data?.root?.relationLabels;
+        if (column.type === 'relation' || column.relation) {
+          return relationLabel(column.name, record, labels, column.relation) || '';
+        }
+        const value = record[column.name];
+        if (value === null || value === undefined) return '';
+        if (column.format === 'boolean' || column.type === 'boolean') {
+          return value ? 'Yes' : 'No';
+        }
+        if (column.format === 'date' || column.format === 'datetime') {
+          const date = new Date(String(value));
+          return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+        }
+        return String(value);
+      },
+    );
+    Handlebars.registerHelper(
+      'entryValue',
+      function (
+        record: Record<string, unknown>,
+        entry: { name: string; type?: string; format?: string; relation?: ColumnConfig['relation'] },
+        options: { data?: { root?: { relationLabels?: RelationLabelMap } } },
+      ) {
+        const labels = options?.data?.root?.relationLabels;
+        if (entry.type === 'relation' || entry.relation) {
+          return relationLabel(entry.name, record, labels, entry.relation) || '—';
+        }
+        const value = record[entry.name];
+        if (value === null || value === undefined) return '—';
+        if (entry.format === 'boolean') return value ? 'Yes' : 'No';
+        if (entry.format === 'date' || entry.format === 'datetime') {
+          const date = new Date(String(value));
+          return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+        }
+        return String(value);
+      },
+    );
+    Handlebars.registerHelper(
+      'kanbanFieldValue',
+      function (
+        record: Record<string, unknown>,
+        fieldName: string,
+        options: {
+          data?: { root?: { relationLabels?: RelationLabelMap; resource?: ResourceMeta } };
+        },
+      ) {
+        const root = options?.data?.root;
+        const field = root?.resource?.fields.find((item) => item.name === fieldName);
+        const column = root?.resource?.columns.find((item) => item.name === fieldName);
+        const relation = column?.relation ?? field?.relation;
+        const label = relationLabel(fieldName, record, root?.relationLabels, relation);
+        if (label) return label;
+        return String(record[fieldName] ?? '');
+      },
+    );
     Handlebars.registerHelper('kanbanCardTitle', (record: Record<string, unknown>, kanban: { card: { titleField: string } }) => {
       const value = record[kanban.card.titleField];
       return value !== undefined && value !== null && value !== '' ? String(value) : 'Untitled';

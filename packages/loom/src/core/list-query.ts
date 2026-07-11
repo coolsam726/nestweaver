@@ -20,9 +20,20 @@ export interface PaginationContext {
   page: number;
   pageCount: number;
   total: number;
+  formAction: string;
   prevHref?: string;
   nextHref?: string;
   links: PaginationLink[];
+}
+
+export type ListPathView = 'table' | 'kanban';
+
+export function listCollectionPath(
+  basePath: string,
+  slug: string,
+  view: ListPathView = 'table',
+): string {
+  return view === 'kanban' ? `${basePath}/${slug}/kanban` : `${basePath}/${slug}`;
 }
 
 export function normalizeListQuery(
@@ -82,8 +93,9 @@ export function listResourcePath(
   slug: string,
   query: ListViewQuery = {},
   overrides: ListViewQuery = {},
+  view: ListPathView = 'table',
 ): string {
-  return `${basePath}/${slug}${buildListQueryString(query, overrides)}`;
+  return `${listCollectionPath(basePath, slug, view)}${buildListQueryString(query, overrides)}`;
 }
 
 export function paginationWindow(
@@ -118,6 +130,7 @@ export function buildPaginationContext(
   slug: string,
   query: ListQuery,
   result: PaginatedResult,
+  view: ListPathView = 'table',
 ): PaginationContext {
   const links: PaginationLink[] = paginationWindow(result.page, result.pageCount).map((entry) => {
     if (entry === 'ellipsis') {
@@ -128,7 +141,7 @@ export function buildPaginationContext(
       page: entry,
       label: String(entry),
       active: entry === result.page,
-      href: listResourcePath(basePath, slug, query, { page: entry }),
+      href: listResourcePath(basePath, slug, query, { page: entry }, view),
     };
   });
 
@@ -136,13 +149,14 @@ export function buildPaginationContext(
     page: result.page,
     pageCount: result.pageCount,
     total: result.total,
+    formAction: listCollectionPath(basePath, slug, view),
     prevHref:
       result.page > 1
-        ? listResourcePath(basePath, slug, query, { page: result.page - 1 })
+        ? listResourcePath(basePath, slug, query, { page: result.page - 1 }, view)
         : undefined,
     nextHref:
       result.page < result.pageCount
-        ? listResourcePath(basePath, slug, query, { page: result.page + 1 })
+        ? listResourcePath(basePath, slug, query, { page: result.page + 1 }, view)
         : undefined,
     links,
   };

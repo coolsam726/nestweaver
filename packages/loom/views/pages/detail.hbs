@@ -1,17 +1,17 @@
 {{#if embed}}
   {{#each resource.infolist.sections}}
-    <div class="loom-card rounded-xl overflow-hidden mb-4 last:mb-0">
-      <div class="px-4 py-3 bg-surface-header">
-        <h2 class="font-semibold text-heading text-sm">{{title}}</h2>
+    <section class="loom-embed-section">
+      <div class="loom-embed-section__header">
+        <h3 class="text-sm font-semibold text-heading">{{title}}</h3>
         {{#if description}}<p class="mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
       </div>
-      <dl class="grid gap-0 sm:grid-cols-{{columns}}">
+      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 1}}">
         {{#each entries}}
-          <div class="px-4 py-3 sm:border-r sm:border-default/40 last:border-r-0">
-            <dt class="text-xs font-semibold uppercase tracking-wide text-body-subtle">{{label}}</dt>
-            <dd class="mt-1 text-sm text-body">
+          <div class="loom-detail-cell" style="{{gridItemStyle this ../columns}}">
+            <dt class="loom-field__label">{{label}}</dt>
+            <dd class="loom-field__value mt-1">
               {{#if (eq format 'boolean')}}
-                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{#if (lookup ../../record name)}}bg-success-soft text-success-strong{{else}}bg-badge-neutral text-body-subtle{{/if}}">
+                <span class="loom-boolean-badge {{#if (lookup ../../record name)}}is-true{{else}}is-false{{/if}}">
                   {{entryValue ../../record this}}
                 </span>
               {{else}}
@@ -21,10 +21,14 @@
           </div>
         {{/each}}
       </dl>
-    </div>
+    </section>
   {{/each}}
   <div class="flex justify-end gap-2 pt-1">
-    <a href="{{basePath}}/{{resource.slug}}/{{id}}/edit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition">Edit</a>
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition"
+      @click="window.LoomUI.openDialog({ url: '{{basePath}}/{{resource.slug}}/{{id}}/edit', title: 'Edit {{resource.singularLabel}}', slug: '{{resource.slug}}', replace: true })"
+    >Edit</button>
   </div>
 {{else}}
 <div class="mx-auto max-w-5xl space-y-6">
@@ -34,13 +38,13 @@
         <h2 class="font-semibold text-heading">{{title}}</h2>
         {{#if description}}<p class="mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
       </div>
-      <dl class="grid gap-0 sm:grid-cols-{{columns}}">
+      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 1}}">
         {{#each entries}}
-          <div class="px-6 py-4 sm:border-r sm:border-default/40 last:border-r-0">
-            <dt class="text-xs font-semibold uppercase tracking-wide text-body-subtle">{{label}}</dt>
-            <dd class="mt-1 text-sm text-body">
+          <div class="loom-detail-cell px-6 py-4 border-t border-card-border sm:border-t-0 sm:border-r sm:border-card-border last:border-r-0" style="{{gridItemStyle this ../columns}}">
+            <dt class="loom-field__label">{{label}}</dt>
+            <dd class="loom-field__value mt-1">
               {{#if (eq format 'boolean')}}
-                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{#if (lookup ../../record name)}}bg-success-soft text-success-strong{{else}}bg-badge-neutral text-body-subtle{{/if}}">
+                <span class="loom-boolean-badge {{#if (lookup ../../record name)}}is-true{{else}}is-false{{/if}}">
                   {{entryValue ../../record this}}
                 </span>
               {{else}}

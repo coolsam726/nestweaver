@@ -13,7 +13,7 @@
         {{#each kanban.card.fields}}
           <div class="flex justify-between gap-2 text-xs">
             <dt class="text-body-subtle capitalize">{{this}}</dt>
-            <dd class="font-medium text-body">{{lookup .. this}}</dd>
+            <dd class="font-medium text-body">{{kanbanFieldValue .. this}}</dd>
           </div>
         {{/each}}
       </dl>
@@ -33,7 +33,7 @@
         {{#each kanban.card.fields}}
           <div class="flex justify-between gap-2 text-xs">
             <dt class="text-body-subtle capitalize">{{this}}</dt>
-            <dd class="font-medium text-body">{{lookup .. this}}</dd>
+            <dd class="font-medium text-body">{{kanbanFieldValue .. this}}</dd>
           </div>
         {{/each}}
       </dl>

@@ -1,36 +1,84 @@
-<div>
-  <label for="field-{{name}}" class="mb-2 block text-sm font-medium text-heading">
-    {{label}}{{#if required}} <span class="text-fg-brand">*</span>{{/if}}
-  </label>
-
-  {{#if (eq type 'textarea')}}
-    <textarea id="field-{{name}}" name="{{name}}" rows="4" {{#if required}}required{{/if}} placeholder="{{placeholder}}" class="loom-input">{{lookup @root.record name}}</textarea>
-  {{else if (eq type 'boolean')}}
-    <label class="inline-flex items-center gap-2 text-sm">
-      <input id="field-{{name}}" type="checkbox" name="{{name}}" value="true" class="rounded border-default text-fg-brand focus:ring-fg-brand" {{#if (lookup @root.record name)}}checked{{/if}} />
-      Enabled
+<div class="loom-field" data-field-type="{{type}}">
+  {{#unless (and (eq type 'boolean') inline)}}
+    <label for="field-{{name}}" class="loom-field__label">
+      {{label}}{{#if required}} <span class="loom-field__required">*</span>{{/if}}
     </label>
+  {{/unless}}
+
+  {{#if (eq type 'boolean')}}
+    <label class="loom-toggle{{#if inline}} loom-toggle--inline{{/if}}{{#if disabled}} is-disabled{{/if}}" for="field-{{name}}">
+      <input
+        id="field-{{name}}"
+        type="checkbox"
+        name="{{name}}"
+        value="true"
+        class="loom-toggle__input"
+        {{#if (fieldChecked @root.record this)}}checked{{/if}}
+        {{#if disabled}}disabled{{/if}}
+        {{#if required}}required{{/if}}
+        {{#if autofocus}}autofocus{{/if}}
+      />
+      <span class="loom-toggle__track" aria-hidden="true">
+        <span class="loom-toggle__thumb"></span>
+      </span>
+      {{#if inline}}
+        <span class="loom-toggle__text">
+          <span class="loom-toggle__label">
+            {{label}}{{#if required}} <span class="loom-field__required">*</span>{{/if}}
+          </span>
+        </span>
+      {{/if}}
+    </label>
+  {{else if (eq type 'textarea')}}
+    <textarea
+      id="field-{{name}}"
+      name="{{name}}"
+      rows="{{or rows 4}}"
+      {{#if required}}required{{/if}}
+      {{#if disabled}}disabled{{/if}}
+      {{#if readonly}}readonly{{/if}}
+      {{#if autofocus}}autofocus{{/if}}
+      placeholder="{{placeholder}}"
+      class="loom-input"
+    >{{lookup @root.record name}}</textarea>
   {{else if (eq type 'select')}}
-    <select id="field-{{name}}" name="{{name}}" {{#if required}}required{{/if}} class="loom-select">
-      <option value="">Select...</option>
+    <select
+      id="field-{{name}}"
+      name="{{name}}"
+      {{#if required}}required{{/if}}
+      {{#if disabled}}disabled{{/if}}
+      {{#if autofocus}}autofocus{{/if}}
+      class="loom-select"
+    >
+      <option value="">{{or placeholder 'Select...'}}</option>
       {{#each options}}
         <option value="{{value}}" {{#if (eq value (lookup @root.record ../name))}}selected{{/if}}>{{label}}</option>
       {{/each}}
     </select>
-  {{else if (eq type 'password')}}
-    <input id="field-{{name}}" type="password" name="{{name}}" {{#if required}}required{{/if}} class="loom-input" autocomplete="new-password" />
+  {{else if (eq type 'relation')}}
+    {{> field-m2o}}
   {{else}}
-    <input
-      id="field-{{name}}"
-      type="{{formInputType this}}"
-      name="{{name}}"
-      value="{{lookup @root.record name}}"
-      {{#if required}}required{{/if}}
-      {{#if maxLength}}maxlength="{{maxLength}}"{{/if}}
-      placeholder="{{placeholder}}"
-      class="loom-input"
-    />
+    <div class="loom-input-group{{#if prefix}} has-prefix{{/if}}{{#if suffix}} has-suffix{{/if}}">
+      {{#if prefix}}<span class="loom-input-group__affix">{{prefix}}</span>{{/if}}
+      <input
+        id="field-{{name}}"
+        type="{{formInputType this}}"
+        name="{{name}}"
+        value="{{lookup @root.record name}}"
+        {{#if required}}required{{/if}}
+        {{#if disabled}}disabled{{/if}}
+        {{#if readonly}}readonly{{/if}}
+        {{#if autofocus}}autofocus{{/if}}
+        {{#if maxLength}}maxlength="{{maxLength}}"{{/if}}
+        {{#if min}}min="{{min}}"{{/if}}
+        {{#if max}}max="{{max}}"{{/if}}
+        {{#if step}}step="{{step}}"{{/if}}
+        placeholder="{{placeholder}}"
+        class="loom-input"
+      />
+      {{#if suffix}}<span class="loom-input-group__affix">{{suffix}}</span>{{/if}}
+    </div>
   {{/if}}
 
-  {{#if help}}<p class="mt-2 text-xs text-loom-muted">{{help}}</p>{{/if}}
+  {{#if help}}<p class="loom-field__help">{{help}}</p>{{/if}}
 </div>

@@ -3,20 +3,25 @@ import {
   Controller,
   Get,
   Header,
+  HttpException,
+  HttpStatus,
   Param,
   Post,
   Query,
   Redirect,
 } from '@nestjs/common';
 import { readFileSync } from 'node:fs';
+import { recordIdFrom } from '../adapters/adapter.js';
 import { groupKanbanRecords } from '../core/resource.js';
 import { buildListViews, showListViewSwitcher, type ListViewId, type ListViewQuery } from '../core/list-views.js';
 import { buildPaginationContext, normalizeListQuery } from '../core/list-query.js';
 import { buildBrandingCss } from '../core/branding.js';
 import type { ResourceMeta, SortDirection } from '../core/types.js';
+import { flashFromQuery } from '../core/flash.js';
 import { loomAdminCssPath, loomUiJsPath } from './paths.js';
 import { LoomService } from './loom.service.js';
 import { LoomViewService } from './loom-view.service.js';
+import { RelationQuickCreateBlockedError } from '../core/relations.js';
 
 export function createLoomController(basePath = '/admin'): new (...args: never[]) => object {
   const route = basePath.replace(/^\//, '') || 'admin';
@@ -63,13 +68,19 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
     @Header('Content-Type', 'text/html; charset=utf-8')
     async kanban(
       @Param('resource') resource: string,
+      @Query('page') page = '1',
+      @Query('perPage') perPage = '15',
       @Query('search') search?: string,
+      @Query('sort') sort?: string,
+      @Query('direction') direction?: SortDirection,
       @Query('success') success?: string,
       @Query('error') error?: string,
     ): Promise<string> {
       const meta = this.loom.meta(resource);
+      const query = normalizeListQuery({ page, perPage, search, sort, direction });
       if (!meta.kanban) {
-        const result = await this.loom.list(resource, { page: 1, perPage: 100, search });
+        const result = await this.loom.list(resource, query);
+        const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
         return this.views.render('list', shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.label,
@@ -77,27 +88,30 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           showCreateButton: true,
           resource: meta,
           result,
-          query: { search },
-          ...listViewContext(this.loom, meta, 'table', { search }),
+          query,
+          relationLabels,
+          pagination: buildPaginationContext(this.loom.basePath, resource, query, result),
+          flash: flashFromQuery(success, error),
+          ...listViewContext(this.loom, meta, 'table', query),
         }));
       }
-      const result = await this.loom.list(resource, {
-        page: 1,
-        perPage: meta.kanban.groupBy ? 500 : 100,
-        search,
-      });
+      const result = await this.loom.list(resource, query);
+      const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
       const columns = groupKanbanRecords(result.items, meta.kanban.groupBy);
       return this.views.render('kanban', shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: meta.kanban.title ?? meta.label,
-        pageSubtitle: 'Kanban view',
+        pageSubtitle: `${result.total} records`,
         showCreateButton: true,
         resource: meta,
+        result,
         kanban: meta.kanban,
         columns,
-        query: { search },
+        relationLabels,
+        query,
+        pagination: buildPaginationContext(this.loom.basePath, resource, query, result, 'kanban'),
         flash: flashFromQuery(success, error),
-        ...listViewContext(this.loom, meta, 'kanban', { search }),
+        ...listViewContext(this.loom, meta, 'kanban', query),
       }));
     }
 
@@ -116,6 +130,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
       const meta = this.loom.meta(resource);
       const query = normalizeListQuery({ page, perPage, search, sort, direction });
       const result = await this.loom.list(resource, query);
+      const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
       return this.views.render('list', shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: meta.label,
@@ -124,6 +139,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         resource: meta,
         result,
         query,
+        relationLabels,
         pagination: buildPaginationContext(this.loom.basePath, resource, query, result),
         flash: flashFromQuery(success, error),
         ...listViewContext(this.loom, meta, 'table', query),
@@ -132,24 +148,103 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
 
     @Get(':resource/create')
     @Header('Content-Type', 'text/html; charset=utf-8')
-    createForm(
+    async createForm(
       @Param('resource') resource: string,
       @Query('embed') embed?: string,
+      @Query('name') prefilledName?: string,
       @Query('success') success?: string,
       @Query('error') error?: string,
-    ): string {
+    ): Promise<string> {
       const meta = this.loom.meta(resource);
+      const relationOptions = await this.loom.relationOptionsForForm(meta);
+      const record: Record<string, unknown> = {};
+      if (prefilledName?.trim()) {
+        const titleField =
+          meta.recordTitleField && meta.recordTitleField !== 'displayName'
+            ? meta.recordTitleField
+            : 'name';
+        record[titleField] = prefilledName.trim();
+      }
       const context = shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: `Create ${meta.singularLabel}`,
         resource: meta,
-        record: {},
+        record,
         mode: 'create',
         readonly: false,
         embed: embed === '1',
+        relationOptions,
+        relationFieldContexts: this.loom.relationFieldContexts(meta),
         flash: flashFromQuery(success, error),
       });
       return this.views.render('form', context, embed === '1' ? { layout: 'bare' } : undefined);
+    }
+
+    @Get(':resource/relation-search')
+    @Header('Content-Type', 'application/json; charset=utf-8')
+    async relationSearch(
+      @Param('resource') resource: string,
+      @Query('field') field: string,
+      @Query('q') q?: string,
+      @Query('limit') limit = '15',
+    ): Promise<string> {
+      try {
+        const results = await this.loom.relationSearch(
+          resource,
+          field,
+          q,
+          Math.min(100, Math.max(1, Number(limit) || 15)),
+        );
+        return JSON.stringify({
+          results: results.map((item) => ({ id: item.value, label: item.label })),
+        });
+      } catch (error) {
+        throw new HttpException(
+          error instanceof Error ? error.message : 'Search failed',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    @Post(':resource/relation-quick-create')
+    @Header('Content-Type', 'application/json; charset=utf-8')
+    async relationQuickCreate(
+      @Param('resource') resource: string,
+      @Body() body: { field?: string; name?: string },
+    ): Promise<string> {
+      try {
+        const item = await this.loom.relationQuickCreate(
+          resource,
+          body.field ?? '',
+          body.name ?? '',
+        );
+        return JSON.stringify({ id: item.value, label: item.label });
+      } catch (error) {
+        if (error instanceof RelationQuickCreateBlockedError) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        throw new HttpException(
+          error instanceof Error ? error.message : 'Create failed',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    @Get(':resource/:id/summary')
+    @Header('Content-Type', 'application/json; charset=utf-8')
+    async recordSummary(
+      @Param('resource') resource: string,
+      @Param('id') id: string,
+    ): Promise<string> {
+      try {
+        const item = await this.loom.relationRecordSummary(resource, id);
+        return JSON.stringify({ id: item.value, label: item.label });
+      } catch (error) {
+        throw new HttpException(
+          error instanceof Error ? error.message : 'Record not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
     }
 
     @Post(':resource')
@@ -159,7 +254,14 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
       @Body() body: Record<string, unknown>,
     ): Promise<{ url: string; statusCode: number }> {
       try {
-        await this.loom.create(resource, body);
+        const created = await this.loom.createRecord(resource, body);
+        const id = recordIdFrom(created);
+        if (body._loom_embed === '1' && id) {
+          return {
+            url: `${this.loom.basePath}/${resource}/${id}?success=created&embed=1`,
+            statusCode: 302,
+          };
+        }
         return {
           url: `${this.loom.basePath}/${resource}?success=created`,
           statusCode: 302,
@@ -168,6 +270,12 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const message = encodeURIComponent(
           error instanceof Error ? error.message : 'Create failed',
         );
+        if (body._loom_embed === '1') {
+          return {
+            url: `${this.loom.basePath}/${resource}/create?error=${message}&embed=1`,
+            statusCode: 302,
+          };
+        }
         return {
           url: `${this.loom.basePath}/${resource}/create?error=${message}`,
           statusCode: 302,
@@ -186,6 +294,10 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
     ): Promise<string> {
       const meta = this.loom.meta(resource);
       const record = await this.loom.findOne(resource, id);
+      const [relationOptions, relationLabels] = await Promise.all([
+        this.loom.relationOptionsForForm(meta),
+        this.loom.relationLabelsForRecords(meta, [record]),
+      ]);
       const context = shellContext(this.loom, {
         currentSlug: resource,
         pageTitle: `Edit ${meta.singularLabel}`,
@@ -196,6 +308,9 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         id,
         readonly: false,
         embed: embed === '1',
+        relationOptions,
+        relationFieldContexts: this.loom.relationFieldContexts(meta),
+        relationLabels,
         flash: flashFromQuery(success, error),
       });
       return this.views.render('form', context, embed === '1' ? { layout: 'bare' } : undefined);
@@ -212,6 +327,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
     ): Promise<string> {
       const meta = this.loom.meta(resource);
       const record = await this.loom.findOne(resource, id);
+      const relationLabels = await this.loom.relationLabelsForRecords(meta, [record]);
       const pageTitle = this.loom.recordTitle(meta, record);
       const context = shellContext(this.loom, {
         currentSlug: resource,
@@ -223,12 +339,14 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         recordTitle: pageTitle,
         id,
         embed: embed === '1',
+        relationLabels,
         flash: flashFromQuery(success, error),
       });
       if (!meta.hasExplicitDetail) {
+        const relationOptions = await this.loom.relationOptionsForForm(meta);
         return this.views.render(
           'form',
-          { ...context, mode: 'view', readonly: true },
+          { ...context, mode: 'view', readonly: true, relationOptions },
           embed === '1' ? { layout: 'bare' } : undefined,
         );
       }
@@ -244,14 +362,26 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
     ): Promise<{ url: string; statusCode: number }> {
       try {
         await this.loom.update(resource, id, body);
+        if (body._loom_embed === '1') {
+          return {
+            url: `${this.loom.basePath}/${resource}?success=updated`,
+            statusCode: 302,
+          };
+        }
         return {
-          url: `${this.loom.basePath}/${resource}/${id}?success=updated`,
+          url: `${this.loom.basePath}/${resource}?success=updated`,
           statusCode: 302,
         };
       } catch (error) {
         const message = encodeURIComponent(
           error instanceof Error ? error.message : 'Update failed',
         );
+        if (body._loom_embed === '1') {
+          return {
+            url: `${this.loom.basePath}/${resource}/${id}/edit?error=${message}&embed=1`,
+            statusCode: 302,
+          };
+        }
         return {
           url: `${this.loom.basePath}/${resource}/${id}/edit?error=${message}`,
           statusCode: 302,
@@ -328,25 +458,4 @@ function shellContext(
     ...menu,
     ...extra,
   };
-}
-
-function flashFromQuery(
-  success?: string,
-  error?: string,
-): { type: 'success' | 'error'; message: string } | undefined {
-  if (success) {
-    const message =
-      success === 'created'
-        ? 'Record created.'
-        : success === 'updated'
-          ? 'Record updated.'
-          : success === 'deleted'
-            ? 'Record deleted.'
-            : success;
-    return { type: 'success', message };
-  }
-  if (error) {
-    return { type: 'error', message: error };
-  }
-  return undefined;
 }

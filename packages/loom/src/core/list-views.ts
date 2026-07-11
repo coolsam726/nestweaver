@@ -51,6 +51,5 @@ function tableListQuery(query: ListViewQuery): string {
 }
 
 function kanbanListQuery(query: ListViewQuery): string {
-  if (!query.search) return '';
-  return `?search=${encodeURIComponent(String(query.search))}`;
+  return buildListQueryString(query);
 }

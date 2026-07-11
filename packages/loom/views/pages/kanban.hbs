@@ -6,15 +6,7 @@
   data-loom-has-kanban="{{#if resource.hasKanban}}true{{else}}false{{/if}}"
 >
   <div class="loom-card rounded-xl overflow-hidden">
-    <form method="get" class="px-4 py-3">
-      <div class="relative min-w-0 sm:max-w-md">
-        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-body-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z"/>
-        </svg>
-        <input type="search" name="search" value="{{query.search}}" placeholder="Search records…" class="loom-input pl-9" />
-        <button type="submit" class="sr-only">Search</button>
-      </div>
-    </form>
+    {{> list-toolbar}}
   </div>
 
   {{#if kanban.groupBy}}
@@ -58,4 +50,6 @@
       {{/if}}
     {{/each}}
   {{/if}}
+
+  {{> pagination}}
 </section>

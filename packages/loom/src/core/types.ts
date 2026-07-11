@@ -37,6 +37,20 @@ export type FieldType =
   | 'email'
   | 'password';
 
+export type RelationKind = 'many2one';
+
+export interface RelationConfig {
+  kind: RelationKind;
+  resource: string;
+  /** Field on the related record to display (supports dotted paths, e.g. `email` or `address.city`) */
+  labelField: string;
+  /** FK on the parent record (defaults to the field/column name, or `relationKeyId` for dotted names) */
+  foreignKey?: string;
+}
+
+export type ColumnSpan = number | 'full';
+export type GridColumns = 1 | 2 | 3 | 4;
+
 export interface FieldConfig {
   name: string;
   type: FieldType;
@@ -48,11 +62,28 @@ export interface FieldConfig {
   hiddenOnTable?: boolean;
   hiddenOnDetail?: boolean;
   readonly?: boolean;
+  disabled?: boolean;
   placeholder?: string;
   help?: string;
+  prefix?: string;
+  suffix?: string;
   options?: Array<{ label: string; value: string | number }>;
-  relation?: { resource: string; labelField: string };
+  relation?: RelationConfig;
   maxLength?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  rows?: number;
+  default?: unknown;
+  autofocus?: boolean;
+  /** Grid column span within the section (1..N or full row) */
+  columnSpan?: ColumnSpan;
+  /** 1-based grid column start */
+  columnStart?: number;
+  /** Boolean: render as inline toggle with label beside control */
+  inline?: boolean;
+  trueLabel?: string;
+  falseLabel?: string;
   /** Only show on create (e.g. password) */
   createOnly?: boolean;
 }
@@ -65,6 +96,9 @@ export interface ColumnConfig {
   sortable?: boolean;
   format?: 'date' | 'datetime' | 'boolean' | 'badge' | 'toggle';
   hiddenOnTable?: boolean;
+  columnSpan?: ColumnSpan;
+  columnStart?: number;
+  relation?: RelationConfig;
 }
 
 export interface NavigationItem {

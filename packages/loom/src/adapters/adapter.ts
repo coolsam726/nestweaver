@@ -4,12 +4,14 @@ import type {
   PaginatedResult,
   ResourceMeta,
 } from '../core/types.js';
+import { withDisplayNameFromMeta } from '../core/display-name.js';
 import { resolveSortDirection, resolveSortField } from '../core/list-query.js';
 
 export interface LoomAdapter {
   readonly kind: OrmKind;
   list(meta: ResourceMeta, query: ListQuery): Promise<PaginatedResult>;
   findOne(meta: ResourceMeta, id: string): Promise<Record<string, unknown>>;
+  findManyByIds(meta: ResourceMeta, ids: string[]): Promise<Record<string, unknown>[]>;
   create(
     meta: ResourceMeta,
     data: Record<string, unknown>,
@@ -49,6 +51,7 @@ export function createNoopAdapter(): LoomAdapter {
     findOne: async () => {
       throw new Error('No ORM configured');
     },
+    findManyByIds: async () => [],
     create: async () => {
       throw new Error('No ORM configured');
     },
@@ -88,6 +91,7 @@ export function createTypeOrmAdapter(dataSource: unknown): LoomAdapter {
     kind: 'typeorm',
     list: (meta, query) => listTypeOrm(source, meta, query),
     findOne: (meta, id) => findOneTypeOrm(source, meta, id),
+    findManyByIds: (meta, ids) => findManyByIdsTypeOrm(source, meta, ids),
     create: (meta, data) => createTypeOrm(source, meta, data),
     update: (meta, id, data) => updateTypeOrm(source, meta, id, data),
     delete: (meta, id) => deleteTypeOrm(source, meta, id),
@@ -101,6 +105,7 @@ export function createPrismaAdapter(client: unknown): LoomAdapter {
     kind: 'prisma',
     list: (meta, query) => listPrisma(prisma, meta, query),
     findOne: (meta, id) => findOnePrisma(prisma, meta, id),
+    findManyByIds: (meta, ids) => findManyByIdsPrisma(prisma, meta, ids),
     create: (meta, data) => createPrisma(prisma, meta, data),
     update: (meta, id, data) => updatePrisma(prisma, meta, id, data),
     delete: (meta, id) => deletePrisma(prisma, meta, id),
@@ -112,6 +117,7 @@ export function createDrizzleAdapter(dataSource: DrizzleLoomDataSource): LoomAda
     kind: 'drizzle',
     list: (meta, query) => listDrizzle(dataSource, meta, query),
     findOne: (meta, id) => findOneDrizzle(dataSource, meta, id),
+    findManyByIds: (meta, ids) => findManyByIdsDrizzle(dataSource, meta, ids),
     create: (meta, data) => createDrizzle(dataSource, meta, data),
     update: (meta, id, data) => updateDrizzle(dataSource, meta, id, data),
     delete: (meta, id) => deleteDrizzle(dataSource, meta, id),
@@ -125,6 +131,7 @@ export function createMongooseAdapter(connection: unknown): LoomAdapter {
     kind: 'mongoose',
     list: (meta, query) => listMongoose(conn, meta, query),
     findOne: (meta, id) => findOneMongoose(conn, meta, id),
+    findManyByIds: (meta, ids) => findManyByIdsMongoose(conn, meta, ids),
     create: (meta, data) => createMongoose(conn, meta, data),
     update: (meta, id, data) => updateMongoose(conn, meta, id, data),
     delete: (meta, id) => deleteMongoose(conn, meta, id),
@@ -132,6 +139,7 @@ export function createMongooseAdapter(connection: unknown): LoomAdapter {
 }
 
 type TypeOrmRepository = {
+  find: (options: Record<string, unknown>) => Promise<unknown[]>;
   findAndCount: (options: Record<string, unknown>) => Promise<[unknown[], number]>;
   findOne: (options: Record<string, unknown>) => Promise<unknown>;
   create: (data: Record<string, unknown>) => unknown;
@@ -171,6 +179,7 @@ type MongooseQuery = {
       limit: (value: number) => { lean: () => Promise<unknown[]> };
     };
   };
+  lean: () => Promise<unknown[]>;
 };
 
 type DrizzleOperators = {
@@ -227,7 +236,7 @@ async function listTypeOrm(
     skip: (query.page - 1) * query.perPage,
     take: query.perPage,
   });
-  return paginate(items.map(normalizeRecord), total, query);
+  return paginate(items.map((item) => finalizeRecord(meta, item)), total, query);
 }
 
 async function findOneTypeOrm(
@@ -238,7 +247,28 @@ async function findOneTypeOrm(
   const repo = dataSource.getRepository(meta.model);
   const record = await repo.findOne({ where: { id: coerceId(id) } });
   if (!record) throw new Error('Record not found');
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
+}
+
+async function findManyByIdsTypeOrm(
+  dataSource: { getRepository: (entity: unknown) => TypeOrmRepository },
+  meta: ResourceMeta,
+  ids: string[],
+): Promise<Record<string, unknown>[]> {
+  if (ids.length === 0) return [];
+  const repo = dataSource.getRepository(meta.model);
+  try {
+    const { In } = await import('typeorm');
+    const records = await repo.find({
+      where: { id: In(ids.map(coerceId)) },
+    });
+    return records.map((item) => finalizeRecord(meta, item));
+  } catch {
+    const records = await repo.find({
+      where: ids.map((id) => ({ id: coerceId(id) })),
+    });
+    return records.map((item) => finalizeRecord(meta, item));
+  }
 }
 
 async function createTypeOrm(
@@ -249,7 +279,7 @@ async function createTypeOrm(
   const repo = dataSource.getRepository(meta.model);
   const entity = repo.create(data);
   const saved = await repo.save(entity);
-  return normalizeRecord(saved);
+  return finalizeRecord(meta, saved);
 }
 
 async function updateTypeOrm(
@@ -263,7 +293,7 @@ async function updateTypeOrm(
   if (!existing) throw new Error('Record not found');
   Object.assign(existing as object, data);
   const saved = await repo.save(existing);
-  return normalizeRecord(saved);
+  return finalizeRecord(meta, saved);
 }
 
 async function deleteTypeOrm(
@@ -315,7 +345,7 @@ async function listPrisma(
     }),
     delegate.count({ where }),
   ]);
-  return paginate(items.map(normalizeRecord), total, query);
+  return paginate(items.map((item) => finalizeRecord(meta, item)), total, query);
 }
 
 async function findOnePrisma(
@@ -326,7 +356,20 @@ async function findOnePrisma(
   const delegate = getPrismaDelegate(client, meta);
   const record = await delegate.findUnique({ where: { id: coerceId(id) } });
   if (!record) throw new Error('Record not found');
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
+}
+
+async function findManyByIdsPrisma(
+  client: Record<string, PrismaDelegate>,
+  meta: ResourceMeta,
+  ids: string[],
+): Promise<Record<string, unknown>[]> {
+  if (ids.length === 0) return [];
+  const delegate = getPrismaDelegate(client, meta);
+  const records = await delegate.findMany({
+    where: { id: { in: ids.map(coerceId) } },
+  });
+  return records.map((item) => finalizeRecord(meta, item));
 }
 
 async function createPrisma(
@@ -336,7 +379,7 @@ async function createPrisma(
 ): Promise<Record<string, unknown>> {
   const delegate = getPrismaDelegate(client, meta);
   const record = await delegate.create({ data });
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
 }
 
 async function updatePrisma(
@@ -350,7 +393,7 @@ async function updatePrisma(
     where: { id: coerceId(id) },
     data,
   });
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
 }
 
 async function deletePrisma(
@@ -391,7 +434,7 @@ async function listDrizzle(
     .from(table)
     .where(where)) as Array<{ count?: number }>;
   const total = Number(countRows[0]?.count ?? 0);
-  return paginate(rows.map(normalizeRecord), total, query);
+  return paginate(rows.map((item) => finalizeRecord(meta, item)), total, query);
 }
 
 async function findOneDrizzle(
@@ -411,7 +454,27 @@ async function findOneDrizzle(
     .limit(1)) as unknown[];
   const record = rows[0];
   if (!record) throw new Error('Record not found');
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
+}
+
+async function findManyByIdsDrizzle(
+  dataSource: DrizzleLoomDataSource,
+  meta: ResourceMeta,
+  ids: string[],
+): Promise<Record<string, unknown>[]> {
+  if (ids.length === 0) return [];
+  const { db, schema } = dataSource;
+  const table = resolveDrizzleTable(schema, meta);
+  const drizzle = (await import('drizzle-orm')) as DrizzleOperators & {
+    inArray: (left: unknown, right: unknown[]) => unknown;
+  };
+  const queryDb = db as LooseDrizzleDb;
+  const tableColumns = table as Record<string, unknown>;
+  const rows = (await queryDb
+    .select()
+    .from(table)
+    .where(drizzle.inArray(tableColumns.id, ids.map(coerceId)))) as unknown[];
+  return rows.map((item) => finalizeRecord(meta, item));
 }
 
 async function createDrizzle(
@@ -423,7 +486,7 @@ async function createDrizzle(
   const table = resolveDrizzleTable(schema, meta);
   const queryDb = db as LooseDrizzleDb;
   const rows = (await queryDb.insert(table).values(data).returning()) as unknown[];
-  return normalizeRecord(rows[0]);
+  return finalizeRecord(meta, rows[0]);
 }
 
 async function updateDrizzle(
@@ -442,7 +505,7 @@ async function updateDrizzle(
     .set(data)
     .where(drizzle.eq(tableColumns.id, coerceId(id)))
     .returning()) as unknown[];
-  return normalizeRecord(rows[0]);
+  return finalizeRecord(meta, rows[0]);
 }
 
 async function deleteDrizzle(
@@ -472,7 +535,7 @@ async function listMongoose(
     model.find(filter).sort({ [sortField]: direction }).skip(skip).limit(query.perPage).lean(),
     model.countDocuments(filter),
   ]);
-  return paginate(items.map(normalizeRecord), total, query);
+  return paginate(items.map((item) => finalizeRecord(meta, item)), total, query);
 }
 
 async function findOneMongoose(
@@ -484,7 +547,19 @@ async function findOneMongoose(
   const model = connection.model(modelKey(meta));
   const record = await model.findById(id).lean();
   if (!record) throw new Error('Record not found');
-  return normalizeRecord(record);
+  return finalizeRecord(meta, record);
+}
+
+async function findManyByIdsMongoose(
+  connection: MongooseConnection,
+  meta: ResourceMeta,
+  ids: string[],
+): Promise<Record<string, unknown>[]> {
+  const mongoIds = ids.filter((id) => /^[a-f\d]{24}$/i.test(id));
+  if (mongoIds.length === 0) return [];
+  const model = connection.model(modelKey(meta));
+  const items = await model.find({ _id: { $in: mongoIds } }).lean();
+  return items.map((item) => finalizeRecord(meta, item));
 }
 
 async function createMongoose(
@@ -494,7 +569,7 @@ async function createMongoose(
 ): Promise<Record<string, unknown>> {
   const model = connection.model(modelKey(meta));
   const record = await model.create(data);
-  return normalizeRecord(toPlainRecord(record));
+  return finalizeRecord(meta, toPlainRecord(record));
 }
 
 async function updateMongoose(
@@ -507,7 +582,7 @@ async function updateMongoose(
   const model = connection.model(modelKey(meta));
   const record = await model.findByIdAndUpdate(id, data, { new: true });
   if (!record) throw new Error('Record not found');
-  return normalizeRecord(toPlainRecord(record));
+  return finalizeRecord(meta, toPlainRecord(record));
 }
 
 async function deleteMongoose(
@@ -596,6 +671,10 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
     out.id = String(out._id);
   }
   return out;
+}
+
+function finalizeRecord(meta: ResourceMeta, value: unknown): Record<string, unknown> {
+  return withDisplayNameFromMeta(normalizeRecord(value), meta);
 }
 
 function getPrismaDelegate(

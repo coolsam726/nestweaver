@@ -5,6 +5,7 @@ import {
   EmailField,
   IdColumn,
   PasswordField,
+  RelationColumn,
   RelationField,
   Resource,
   KanbanBuilder,
@@ -40,7 +41,7 @@ export abstract class UserResourceBase extends Resource {
         TextField.make('name').required().searchable(),
         EmailField.make('email').required().searchable(),
         PasswordField.make('password').required().label('Password'),
-        RelationField.make('companyId').to('companies', 'name').label('Company'),
+        RelationField.make('companyId').manyToOne('companies').label('Company'),
         BooleanField.make('active').label('Active'),
       );
     return schema.build();
@@ -52,7 +53,7 @@ export abstract class UserResourceBase extends Resource {
         IdColumn.make(),
         TextColumn.make('name').searchable().sortable(),
         TextColumn.make('email').searchable().sortable(),
-        TextColumn.make('companyId').label('Company'),
+        RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
         BooleanColumn.make('active').sortable(),
         DateTimeColumn.make('createdAt').sortable(),
       )
@@ -66,7 +67,7 @@ export abstract class UserResourceBase extends Resource {
       .entries(
         TextColumn.make('name'),
         TextColumn.make('email'),
-        TextColumn.make('companyId').label('Company'),
+        RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
         BooleanColumn.make('active'),
         DateTimeColumn.make('createdAt'),
       )
