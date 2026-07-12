@@ -15,7 +15,25 @@ export const users = mysqlTable('users', {
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }),
+  roleIds: text('role_ids'),
   companyId: int('company_id').references(() => companies.id),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const loomPermissions = mysqlTable('loom_permissions', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  resource: varchar('resource', { length: 255 }).notNull(),
+  ability: varchar('ability', { length: 255 }).notNull(),
+  label: varchar('label', { length: 255 }),
+});
+
+export const loomRoles = mysqlTable('loom_roles', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  permissionIds: text('permission_ids'),
 });

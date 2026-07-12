@@ -129,10 +129,17 @@
           {{#if user.email}}<p class="text-xs text-body-subtle">{{user.email}}</p>{{/if}}
         </div>
         <div class="py-1 text-sm">
-          <a href="#" class="block px-4 py-1.5 text-body hover:bg-surface-hover hover:text-heading">My profile</a>
+          {{#if user.role}}
+            <p class="px-4 py-1.5 text-xs text-body-subtle uppercase tracking-wide">{{user.role}}</p>
+          {{/if}}
           <a href="{{basePath}}" class="block px-4 py-1.5 text-body hover:bg-surface-hover hover:text-heading">Admin</a>
-          <a href="#" class="block px-4 py-1.5 text-body hover:bg-surface-hover hover:text-heading">Change password</a>
-          <a href="/" class="block px-4 py-1.5 text-fg-danger hover:bg-danger-soft">Back to app</a>
+          {{#if authEnabled}}
+            <form method="post" action="{{logoutPath}}">
+              <button type="submit" class="w-full text-left px-4 py-1.5 text-fg-danger hover:bg-danger-soft">Sign out</button>
+            </form>
+          {{else}}
+            <a href="/" class="block px-4 py-1.5 text-fg-danger hover:bg-danger-soft">Back to app</a>
+          {{/if}}
         </div>
       </div>
     </div>

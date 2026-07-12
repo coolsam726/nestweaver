@@ -14,6 +14,9 @@ export class User {
   @Prop()
   password?: string;
 
+  @Prop({ type: [String], default: [] })
+  roleIds!: string[];
+
   @Prop({ type: Types.ObjectId, ref: 'Company' })
   companyId?: Types.ObjectId;
 

@@ -25,6 +25,9 @@ import type {
 } from './types.js';
 import { InfolistBuilder } from './infolist.js';
 import { KanbanBuilder } from './kanban.js';
+import type { LoomAuthUser } from './auth.js';
+import { userHasPermission } from './abilities.js';
+import type { PolicyClass } from './policy.js';
 
 import { computeDisplayName } from './display-name.js';
 
@@ -76,6 +79,8 @@ export abstract class Resource {
   static navigationGroup?: string;
   static navigationSection?: string;
   static recordTitleField = 'name';
+  /** Optional record-level policy (instance checks + list scope) */
+  static policy?: PolicyClass;
 
   /** Filament-style form schema */
   static form(_schema: FormSchemaBuilder): FormSchema {
@@ -108,6 +113,49 @@ export abstract class Resource {
   /** Quick edit/view in modal vs full page */
   static presentation(): Partial<ResourcePresentation> {
     return {};
+  }
+
+  /**
+   * Extra abilities beyond the CRUD set (`viewAny`/`view`/`create`/`edit`/`delete`).
+   * Seeded on boot as `{slug}:{ability}` (or as a full `resource:ability` name).
+   *
+   * @example
+   * static permissions() {
+   *   return ['export', 'publish', { name: 'approve', label: 'Approve deal' }];
+   * }
+   */
+  static permissions(): Array<string | { name: string; label?: string }> {
+    return [];
+  }
+
+  /** Whether the resource appears in navigation and is reachable */
+  static canAccess(user: LoomAuthUser): boolean {
+    return this.canViewAny(user);
+  }
+
+  static canViewAny(user: LoomAuthUser): boolean {
+    if (this.policy?.viewAny) return Boolean(this.policy.viewAny(user));
+    return userHasPermission(user, this.slug, 'viewAny');
+  }
+
+  static canView(user: LoomAuthUser, record?: Record<string, unknown>): boolean {
+    if (this.policy?.view) return Boolean(this.policy.view(user, record ?? {}));
+    return userHasPermission(user, this.slug, 'view');
+  }
+
+  static canCreate(user: LoomAuthUser): boolean {
+    if (this.policy?.create) return Boolean(this.policy.create(user));
+    return userHasPermission(user, this.slug, 'create');
+  }
+
+  static canEdit(user: LoomAuthUser, record?: Record<string, unknown>): boolean {
+    if (this.policy?.edit) return Boolean(this.policy.edit(user, record ?? {}));
+    return userHasPermission(user, this.slug, 'edit');
+  }
+
+  static canDelete(user: LoomAuthUser, record?: Record<string, unknown>): boolean {
+    if (this.policy?.delete) return Boolean(this.policy.delete(user, record ?? {}));
+    return userHasPermission(user, this.slug, 'delete');
   }
 
   static configure(): ResourceMeta {
@@ -146,6 +194,7 @@ export abstract class Resource {
       hasDetail: hasExplicitDetail || form.fields.length > 0,
       hasExplicitDetail,
       presentation,
+      customPermissions: normalizeCustomPermissions(this.slug, this.permissions()),
     };
   }
 
@@ -299,6 +348,12 @@ export type ResourceClassLike = {
   presentation(): Partial<ResourcePresentation>;
   recordTitle(record: Record<string, unknown>): string;
   configure(): ResourceMeta;
+  canAccess(user: LoomAuthUser): boolean;
+  canViewAny(user: LoomAuthUser): boolean;
+  canView(user: LoomAuthUser, record?: Record<string, unknown>): boolean;
+  canCreate(user: LoomAuthUser): boolean;
+  canEdit(user: LoomAuthUser, record?: Record<string, unknown>): boolean;
+  canDelete(user: LoomAuthUser, record?: Record<string, unknown>): boolean;
 };
 
 function resolvePresentation(
@@ -308,6 +363,26 @@ function resolvePresentation(
     form: config.form ?? 'page',
     detail: config.detail ?? 'page',
   };
+}
+
+/**
+ * Normalize resource `permissions()` entries into full `{resource}:{ability}` names.
+ * Bare abilities (`export`) become `{slug}:export`; full names (`orders:export`) pass through.
+ */
+export function normalizeCustomPermissions(
+  slug: string,
+  entries: Array<string | { name: string; label?: string }>,
+): Array<{ name: string; label?: string }> {
+  const out: Array<{ name: string; label?: string }> = [];
+  for (const entry of entries) {
+    const raw = typeof entry === 'string' ? entry : entry.name;
+    const label = typeof entry === 'string' ? undefined : entry.label;
+    if (!raw?.trim()) continue;
+    const name =
+      raw === '*' || raw.includes(':') ? raw.trim() : `${slug}:${raw.trim()}`;
+    out.push(label ? { name, label } : { name });
+  }
+  return out;
 }
 
 export { groupKanbanRecords };

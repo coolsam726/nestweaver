@@ -7,21 +7,26 @@ export function generateTypeormDatabaseModule(
     throw new Error('TypeORM database module requires typeorm ORM and a database');
   }
 
+  const entities = 'Company, User, LoomRole, LoomPermission';
+  const imports = `import { Company } from './company.entity';
+import { LoomPermission } from './loom-permission.entity';
+import { LoomRole } from './loom-role.entity';
+import { User } from './user.entity';`;
+
   if (options.database === 'sqlite') {
     return `import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Company } from './company.entity';
-import { User } from './user.entity';
+${imports}
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
       database: process.env.DATABASE_URL?.replace(/^file:/, '') ?? './data/dev.db',
-      entities: [Company, User],
+      entities: [${entities}],
       synchronize: process.env.NODE_ENV !== 'production',
     }),
-    TypeOrmModule.forFeature([Company, User]),
+    TypeOrmModule.forFeature([${entities}]),
   ],
   exports: [TypeOrmModule],
 })
@@ -33,18 +38,17 @@ export class DatabaseModule {}
 
   return `import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Company } from './company.entity';
-import { User } from './user.entity';
+${imports}
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: '${type}',
       url: process.env.DATABASE_URL,
-      entities: [Company, User],
+      entities: [${entities}],
       synchronize: process.env.NODE_ENV !== 'production',
     }),
-    TypeOrmModule.forFeature([Company, User]),
+    TypeOrmModule.forFeature([${entities}]),
   ],
   exports: [TypeOrmModule],
 })

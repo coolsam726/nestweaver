@@ -246,7 +246,7 @@ export class RelationField extends FieldBase<FieldConfig> {
 
   /**
    * Many-to-one: store foreign key, pick one related record.
-   * `labelField` is the related attribute to show (default `name`).
+   * `labelField` is the related attribute to show (default `displayName`).
    */
   manyToOne(resource: string, labelField = 'displayName'): this {
     this.config.relation = {
@@ -255,6 +255,124 @@ export class RelationField extends FieldBase<FieldConfig> {
       labelField,
       foreignKey: this.config.name,
     };
+    return this;
+  }
+
+  /**
+   * Many-to-many: store related id array on this field; default widget is chips combobox.
+   */
+  manyToMany(resource: string, labelField = 'displayName'): this {
+    this.config.relation = {
+      kind: 'many2many',
+      resource,
+      labelField,
+      foreignKey: this.config.name,
+      widget: this.config.relation?.widget ?? 'combobox',
+    };
+    return this;
+  }
+
+  /**
+   * One-to-many (chips / checkboxes / table): stores related id array on this field.
+   */
+  oneToMany(resource: string, labelField = 'displayName'): this {
+    this.config.relation = {
+      kind: 'one2many',
+      resource,
+      labelField,
+      foreignKey: this.config.name,
+      widget: this.config.relation?.widget ?? 'combobox',
+    };
+    return this;
+  }
+
+  /**
+   * Choose multi-relation form widget: `combobox` (chips), `checkboxList`, or `relationTable`.
+   */
+  widget(value: 'combobox' | 'checkboxList' | 'relationTable'): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        widget: value,
+      };
+      return this;
+    }
+    this.config.relation.widget = value;
+    return this;
+  }
+
+  /** Columns for `checkboxList` (1–4). With `groupBy`, columns of group clusters. */
+  checkboxColumns(value: 1 | 2 | 3 | 4): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        widget: 'checkboxList',
+        checkboxColumns: value,
+      };
+      return this;
+    }
+    this.config.relation.checkboxColumns = value;
+    return this;
+  }
+
+  /**
+   * When selecting `*` or `resource:*`, disable more specific options (default: on for checkboxList).
+   */
+  cascadeWildcards(value = true): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        cascadeWildcards: value,
+      };
+      return this;
+    }
+    this.config.relation.cascadeWildcards = value;
+    return this;
+  }
+
+  /** Group checkboxList options by a related-record field (e.g. `resource`). */
+  groupBy(field: string): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        widget: 'checkboxList',
+        groupBy: field,
+      };
+      return this;
+    }
+    this.config.relation.groupBy = field;
+    return this;
+  }
+
+  /**
+   * Wrap checkboxList in a bordered fixed-height scroll box (default true).
+   * Pass `false` for an open layout (e.g. permission clusters).
+   */
+  checkboxFramed(value = true): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        widget: 'checkboxList',
+        checkboxFramed: value,
+      };
+      return this;
+    }
+    this.config.relation.checkboxFramed = value;
     return this;
   }
 
@@ -430,6 +548,43 @@ export class RelationColumn extends ColumnBase<ColumnConfig> {
       labelField: labelField ?? existing?.labelField ?? dotted?.displayField ?? 'displayName',
       foreignKey: existing?.foreignKey ?? dotted?.foreignKey ?? this.config.name,
     };
+    return this;
+  }
+
+  manyToMany(resource: string, labelField = 'displayName'): this {
+    this.config.relation = {
+      kind: 'many2many',
+      resource,
+      labelField,
+      foreignKey: this.config.name,
+      widget: this.config.relation?.widget ?? 'combobox',
+    };
+    return this;
+  }
+
+  oneToMany(resource: string, labelField = 'displayName'): this {
+    this.config.relation = {
+      kind: 'one2many',
+      resource,
+      labelField,
+      foreignKey: this.config.name,
+      widget: this.config.relation?.widget ?? 'combobox',
+    };
+    return this;
+  }
+
+  widget(value: 'combobox' | 'checkboxList' | 'relationTable'): this {
+    if (!this.config.relation) {
+      this.config.relation = {
+        kind: 'many2many',
+        resource: '',
+        labelField: 'displayName',
+        foreignKey: this.config.name,
+        widget: value,
+      };
+      return this;
+    }
+    this.config.relation.widget = value;
     return this;
   }
 }

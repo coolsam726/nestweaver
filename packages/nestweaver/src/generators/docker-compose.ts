@@ -160,6 +160,13 @@ function appEnvironment(options: ScaffoldOptions): string[] {
     lines.push('      REDIS_PORT: 6379');
   }
 
+  if (options.admin) {
+    lines.push('      LOOM_AUTH_SECRET: dev-loom-auth-secret-change-me');
+    lines.push('      LOOM_ADMIN_EMAIL: admin@example.com');
+    lines.push('      LOOM_ADMIN_PASSWORD: password');
+    lines.push('      LOOM_ADMIN_NAME: Admin');
+  }
+
   return lines;
 }
 

@@ -31,7 +31,7 @@ Use `.` as the directory name to scaffold into the current folder:
 npm create nestweaver@latest .
 ```
 
-You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, admin panel, and Nuxt render mode (SSR/SPA) when applicable.
+You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, admin panel (Loom), and Nuxt render mode (SSR/SPA) when applicable.
 
 ## After scaffolding
 
@@ -102,9 +102,11 @@ Users then run `npm create nestweaver@latest`.
 
 | Package | Role |
 |---------|------|
-| `@nestweaver/loom` | Declarative admin panel for NestJS (`/admin` CRUD UI) |
+| [`@nestweaver/loom`](packages/loom/README.md) | Declarative NestJS admin (`/admin`): resources, RBAC, relations, JSON API |
 | `create-nestweaver` | npm entry for `npm create nestweaver` |
-| `nestweaver` | Core scaffolder, templates, and `weaver` CLI |
+| [`nestweaver`](packages/nestweaver/README.md) | Core scaffolder, templates, and `weaver` CLI |
+
+Enabling the admin panel during scaffold wires Loom with ORM-matched Role/Permission models and seed auth. See the [Loom README](packages/loom/README.md) for the full feature guide.
 
 ## License
 

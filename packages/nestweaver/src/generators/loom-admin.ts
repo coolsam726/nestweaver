@@ -8,7 +8,8 @@ function adminTitle(options: ScaffoldOptions): string {
   return `${name} Admin`;
 }
 
-const RESOURCE_LIST = 'CompanyResource, UserResource';
+const RESOURCE_LIST =
+  'CompanyResource, UserResource, RoleResource, PermissionResource';
 
 export function generateCompanyResource(options: ScaffoldOptions): string | null {
   if (options.orm === 'none') {
@@ -87,6 +88,9 @@ export class User {
   @Prop()
   password?: string;
 
+  @Prop({ type: [String], default: [] })
+  roleIds!: string[];
+
   @Prop({ type: Types.ObjectId, ref: 'Company' })
   companyId?: Types.ObjectId;
 
@@ -137,7 +141,9 @@ export class LoomAdminModule {}
   }
 
   const resourcesImport = `import { CompanyResource } from './company.resource';
-import { UserResource } from './user.resource';`;
+import { UserResource } from './user.resource';
+import { RoleResource } from './role.resource';
+import { PermissionResource } from './permission.resource';`;
   const factoryBody = loomFactoryBody(options);
   const extraImports = loomModuleImports(options);
 
@@ -162,9 +168,11 @@ export class LoomAdminModule {}
 function modelImportForOrm(options: ScaffoldOptions, model: string): string {
   switch (options.orm) {
     case 'typeorm':
-      return `import { ${model} } from '../database/${model.toLowerCase()}.entity';\n`;
+      return `import { ${model} } from '../database/${entityFileStem(model)}.entity';\n`;
     case 'mongoose':
-      return `import { ${model} } from '../database/${model.toLowerCase()}.schema';\n`;
+      // LoomRole / LoomPermission are registered at runtime by the RBAC store.
+      if (model === 'LoomRole' || model === 'LoomPermission') return '';
+      return `import { ${model} } from '../database/${entityFileStem(model)}.schema';\n`;
     case 'prisma':
     case 'drizzle':
       return '';
@@ -176,17 +184,27 @@ function modelImportForOrm(options: ScaffoldOptions, model: string): string {
 function modelRefForOrm(options: ScaffoldOptions, model: string): string {
   switch (options.orm) {
     case 'typeorm':
+      return model;
     case 'mongoose':
+      if (model === 'LoomRole' || model === 'LoomPermission') return `'${model}'`;
       return model;
     case 'prisma':
       return `'${model}'`;
     case 'drizzle':
       if (model === 'Company') return "'companies'";
       if (model === 'User') return "'users'";
-      return `'${model.toLowerCase()}s'`;
+      if (model === 'LoomRole') return "'loomRoles'";
+      if (model === 'LoomPermission') return "'loomPermissions'";
+      return `'${model.charAt(0).toLowerCase()}${model.slice(1)}s'`;
     default:
       return `'${model}'`;
   }
+}
+
+function entityFileStem(model: string): string {
+  return model
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase();
 }
 
 function loomModuleImports(options: ScaffoldOptions): string {
@@ -236,6 +254,16 @@ function loomInjectTokens(options: ScaffoldOptions): string {
 
 function loomFactoryBody(options: ScaffoldOptions): string {
   const title = adminTitle(options);
+  const authBlock = `auth: {
+          secret: process.env.LOOM_AUTH_SECRET || 'dev-loom-auth-secret-change-me',
+          secure: process.env.NODE_ENV === 'production',
+          seedAdmin: {
+            email: process.env.LOOM_ADMIN_EMAIL || 'admin@example.com',
+            password: process.env.LOOM_ADMIN_PASSWORD || 'password',
+            name: process.env.LOOM_ADMIN_NAME || 'Admin',
+            role: 'admin',
+          },
+        },`;
 
   switch (options.orm) {
     case 'typeorm':
@@ -245,6 +273,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         basePath: '/admin',
         title: '${title}',
         resources: [${RESOURCE_LIST}],
+        ${authBlock}
       })`;
     case 'prisma':
       return `(prisma: PrismaService) => ({
@@ -253,6 +282,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         basePath: '/admin',
         title: '${title}',
         resources: [${RESOURCE_LIST}],
+        ${authBlock}
       })`;
     case 'drizzle':
       return `(db: unknown) => ({
@@ -261,6 +291,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         basePath: '/admin',
         title: '${title}',
         resources: [${RESOURCE_LIST}],
+        ${authBlock}
       })`;
     case 'mongoose':
       return `(connection: Connection) => ({
@@ -269,6 +300,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         basePath: '/admin',
         title: '${title}',
         resources: [${RESOURCE_LIST}],
+        ${authBlock}
       })`;
     default:
       return '() => ({ resources: [] })';
@@ -294,6 +326,33 @@ export function generateLoomAdminFiles(
     files.push([`${adminDir}/user.resource.ts`, userResource]);
   }
 
+  if (options.orm !== 'none') {
+    const roleImport = modelImportForOrm(options, 'LoomRole');
+    const roleRef = modelRefForOrm(options, 'LoomRole');
+    const permissionImport = modelImportForOrm(options, 'LoomPermission');
+    const permissionRef = modelRefForOrm(options, 'LoomPermission');
+    files.push(
+      [
+        `${adminDir}/role.resource.ts`,
+        `${roleImport}import { RoleResourceBase } from '@nestweaver/loom/base';
+
+export class RoleResource extends RoleResourceBase {
+  static override model = ${roleRef};
+}
+`,
+      ],
+      [
+        `${adminDir}/permission.resource.ts`,
+        `${permissionImport}import { PermissionResourceBase } from '@nestweaver/loom/base';
+
+export class PermissionResource extends PermissionResourceBase {
+  static override model = ${permissionRef};
+}
+`,
+      ],
+    );
+  }
+
   if (options.orm === 'mongoose') {
     files.push(
       [`${dbDir}/company.schema.ts`, generateMongooseCompanySchema()],
@@ -302,5 +361,64 @@ export function generateLoomAdminFiles(
     );
   }
 
+  if (options.orm === 'typeorm') {
+    files.push(
+      [`${dbDir}/loom-role.entity.ts`, generateTypeormLoomRoleEntity()],
+      [
+        `${dbDir}/loom-permission.entity.ts`,
+        generateTypeormLoomPermissionEntity(),
+      ],
+    );
+  }
+
   return files;
+}
+
+export function generateTypeormLoomRoleEntity(): string {
+  return `import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity('loom_roles')
+export class LoomRole {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column()
+  name!: string;
+
+  @Column({ unique: true })
+  slug!: string;
+
+  @Column({ nullable: true })
+  description?: string;
+
+  @Column({ default: true })
+  active!: boolean;
+
+  @Column('simple-array', { nullable: true })
+  permissionIds?: string[];
+}
+`;
+}
+
+export function generateTypeormLoomPermissionEntity(): string {
+  return `import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity('loom_permissions')
+export class LoomPermission {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column({ unique: true })
+  name!: string;
+
+  @Column()
+  resource!: string;
+
+  @Column()
+  ability!: string;
+
+  @Column({ nullable: true })
+  label?: string;
+}
+`;
 }
