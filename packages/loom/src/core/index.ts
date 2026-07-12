@@ -28,3 +28,8 @@ export * from './request-context.js';
 export * from './tenancy.js';
 export * from './soft-delete.js';
 export * from './i18n.js';
+export * from './storage.js';
+export * from './audit.js';
+export * from './export.js';
+export * from './openapi.js';
+export * from './list-actions.js';

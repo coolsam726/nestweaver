@@ -103,9 +103,4 @@ Also shipped in Wave 2 PR: [#15](https://github.com/coolsam726/nestweaver/issues
 
 Wave 3: _(complete)_ — [#21](https://github.com/coolsam726/nestweaver/issues/21)–[#28](https://github.com/coolsam726/nestweaver/issues/28) including soft deletes, a11y focus, i18n, relation perf (PR #41).
 
-Wave 4 _(in progress)_:
-
-- [#33](https://github.com/coolsam726/nestweaver/issues/33) — opt-in `securityHeaders` + Loom-compatible default CSP
-- [#34](https://github.com/coolsam726/nestweaver/issues/34) — one-time deprecation warnings for legacy APIs
-
-Open: [#29](https://github.com/coolsam726/nestweaver/issues/29) media, [#30](https://github.com/coolsam726/nestweaver/issues/30) audit, [#31](https://github.com/coolsam726/nestweaver/issues/31) bulk/export, [#32](https://github.com/coolsam726/nestweaver/issues/32) OpenAPI.
+Wave 4: _(complete)_ — [#29](https://github.com/coolsam726/nestweaver/issues/29)–[#34](https://github.com/coolsam726/nestweaver/issues/34): media/storage, audit hooks, bulk UI + export, API versioning + OpenAPI, security headers, deprecation warnings.

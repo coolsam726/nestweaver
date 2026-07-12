@@ -5,8 +5,9 @@ import { createNoopAdapter, createLoomAdapter, type LoomAdapter } from '../adapt
 import { assertLoomDeprecations, assertLoomProductionAuth } from '../core/assert-options.js';
 import { ResourceRegistry } from '../core/registry.js';
 import { createLoomRbacStore, createNoopRbacStore, LOOM_RBAC } from '../core/rbac-store.js';
+import { resolveStorageAdapter } from '../core/storage.js';
 import type { LoomModuleOptions } from '../core/types.js';
-import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
+import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY, LOOM_STORAGE } from '../core/types.js';
 import { createLoomController } from './loom.controller.js';
 import { createLoomApiController } from './loom-api.controller.js';
 import { LoomService } from './loom.service.js';
@@ -44,7 +45,15 @@ function resolveApiPrefix(options: LoomModuleOptions): string | null {
   if (api && typeof api === 'object' && api.prefix) {
     return api.prefix.replace(/^\//, '').replace(/\/$/, '') || 'api/loom';
   }
+  if (api && typeof api === 'object' && api.version) {
+    const version = api.version.replace(/^\//, '').replace(/\/$/, '');
+    return version ? `api/loom/${version}` : 'api/loom';
+  }
   return 'api/loom';
+}
+
+function resolveStorage(options: LoomModuleOptions) {
+  return resolveStorageAdapter(options.storage);
 }
 
 function normalizeOptions(options: LoomModuleOptions): LoomModuleOptions {
@@ -83,6 +92,11 @@ function buildLoomModule(
           new ResourceRegistry(moduleOptions.resources),
         inject: [LOOM_OPTIONS],
       },
+      {
+        provide: LOOM_STORAGE,
+        useFactory: resolveStorage,
+        inject: [LOOM_OPTIONS],
+      },
       LoomService,
       LoomViewService,
       LoomAuthService,
@@ -104,6 +118,7 @@ function buildLoomModule(
       LOOM_ADAPTER,
       LOOM_REGISTRY,
       LOOM_RBAC,
+      LOOM_STORAGE,
     ],
   };
 }

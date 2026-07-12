@@ -206,6 +206,12 @@ export class LoomViewService {
         const value = record[field.name];
         if (value === null || value === undefined) return '';
         if (field.type === 'boolean') return value ? 'Yes' : 'No';
+        if (field.type === 'image' && typeof value === 'string' && value) {
+          return value;
+        }
+        if (field.type === 'file' && typeof value === 'string' && value) {
+          return value.split('/').pop() ?? value;
+        }
         return String(value);
       },
     );
@@ -228,6 +234,10 @@ export class LoomViewService {
         if (column.format === 'date' || column.format === 'datetime') {
           const date = new Date(String(value));
           return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+        }
+        if (column.type === 'image' && typeof value === 'string') return value;
+        if (column.type === 'file' && typeof value === 'string') {
+          return value.split('/').pop() ?? value;
         }
         return String(value);
       },
@@ -287,6 +297,9 @@ export class LoomViewService {
           return 'date';
         case 'datetime':
           return 'datetime-local';
+        case 'file':
+        case 'image':
+          return 'file';
         default:
           return 'text';
       }

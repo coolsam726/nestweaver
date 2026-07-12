@@ -122,6 +122,10 @@ export abstract class Resource {
     return [ViewAction.make(), EditAction.make(), DeleteAction.make()];
   }
 
+  static bulkActions(): ActionLike[] {
+    return [];
+  }
+
   /** Quick edit/view in modal vs full page */
   static presentation(): Partial<ResourcePresentation> {
     return {};
@@ -177,7 +181,11 @@ export abstract class Resource {
     const kanban = this.kanban(new KanbanBuilder());
     const hasExplicitDetail = detail !== undefined;
     const infolist = detail ?? infolistFromFields(form.fields);
-    const actions = resolveActions([...this.headerActions(), ...this.recordActions()]);
+    const actions = resolveActions([
+      ...this.headerActions(),
+      ...this.recordActions(),
+      ...this.bulkActions(),
+    ]);
     const presentation = resolvePresentation(this.presentation());
 
     const searchableFields = [
@@ -237,6 +245,7 @@ export function extendResource<Base extends ResourceClassLike>(
     kanban?: (kanban: KanbanBuilder) => KanbanBuilder | void;
     headerActions?: () => ActionLike[];
     recordActions?: () => ActionLike[];
+    bulkActions?: () => ActionLike[];
     presentation?: () => Partial<ResourcePresentation>;
   },
 ): ResourceClassLike {
@@ -287,6 +296,10 @@ export function extendResource<Base extends ResourceClassLike>(
 
     static override recordActions(): ActionLike[] {
       return overrides.recordActions?.() ?? Base.recordActions();
+    }
+
+    static override bulkActions(): ActionLike[] {
+      return overrides.bulkActions?.() ?? Base.bulkActions();
     }
 
     static override presentation(): Partial<ResourcePresentation> {
@@ -360,6 +373,7 @@ export type ResourceClassLike = {
   kanban(kanban: KanbanBuilder): KanbanSchema | undefined;
   headerActions(): ActionLike[];
   recordActions(): ActionLike[];
+  bulkActions(): ActionLike[];
   presentation(): Partial<ResourcePresentation>;
   recordTitle(record: Record<string, unknown>): string;
   configure(): ResourceMeta;

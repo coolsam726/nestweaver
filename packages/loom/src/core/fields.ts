@@ -387,6 +387,56 @@ export class RelationField extends FieldBase<FieldConfig> {
   }
 }
 
+export class FileField extends FieldBase<FieldConfig> {
+  private constructor(config: FieldConfig) {
+    super(config);
+  }
+
+  static make(name: string): FileField {
+    return new FileField(baseField(name, 'file'));
+  }
+
+  accept(value: string[]): this {
+    this.config.media = { ...this.config.media, accept: value };
+    return this;
+  }
+
+  maxBytes(value: number): this {
+    this.config.media = { ...this.config.media, maxBytes: value };
+    return this;
+  }
+
+  disk(value: string): this {
+    this.config.media = { ...this.config.media, disk: value };
+    return this;
+  }
+}
+
+export class ImageField extends FieldBase<FieldConfig> {
+  private constructor(config: FieldConfig) {
+    super(config);
+  }
+
+  static make(name: string): ImageField {
+    return new ImageField(baseField(name, 'image'));
+  }
+
+  accept(value: string[]): this {
+    this.config.media = { ...this.config.media, accept: value };
+    return this;
+  }
+
+  maxBytes(value: number): this {
+    this.config.media = { ...this.config.media, maxBytes: value };
+    return this;
+  }
+
+  disk(value: string): this {
+    this.config.media = { ...this.config.media, disk: value };
+    return this;
+  }
+}
+
 export class EmailField extends FieldBase<FieldConfig> {
   private constructor(config: FieldConfig) {
     super(config);
@@ -421,7 +471,9 @@ export type Field =
   | SelectField
   | RelationField
   | EmailField
-  | PasswordField;
+  | PasswordField
+  | FileField
+  | ImageField;
 
 export function resolveFields(fields: Field[]): FieldConfig[] {
   return fields.map((field) => field.build());

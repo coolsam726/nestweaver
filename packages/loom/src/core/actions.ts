@@ -88,6 +88,11 @@ export class Action extends ActionBase<ActionConfig> {
     this.config.style = 'link';
     return this;
   }
+
+  method(value: 'GET' | 'POST'): this {
+    this.config.method = value;
+    return this;
+  }
 }
 
 export class CreateAction extends ActionBase<ActionConfig> {
@@ -169,6 +174,27 @@ export type ActionLike =
 
 export function resolveActions(actions: ActionLike[]): ActionConfig[] {
   return actions.map((action) => action.build());
+}
+
+/** Built-in CSV/JSON export header action for the resource list. */
+export function exportAction(): Action {
+  return Action.make('export')
+    .label('Export')
+    .header()
+    .link()
+    .url('__loom_export__')
+    .method('GET');
+}
+
+/** Built-in bulk delete action for the list selection bar. */
+export function bulkDeleteAction(): Action {
+  return Action.make('delete')
+    .label('Delete selected')
+    .bulk()
+    .color('danger')
+    .confirm('Delete selected records?')
+    .method('POST')
+    .url('__loom_bulk_delete__');
 }
 
 function humanize(value: string): string {

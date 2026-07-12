@@ -1,0 +1,24 @@
+{{#if bulkEnabled}}
+<div
+  class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3 bg-surface-header"
+  x-show="selected.length > 0"
+  x-cloak
+>
+  <p class="text-sm text-body">
+    <span x-text="selected.length"></span> selected
+  </p>
+  <div class="flex flex-wrap items-center gap-2">
+    {{#each bulkActions}}
+      {{#if (eq method 'POST')}}
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md {{#if (eq color 'danger')}}text-fg-danger hover:bg-danger-soft{{else}}text-body hover:bg-surface-hover border border-default{{/if}}"
+          @click="submitBulk('{{url}}', '{{name}}', {{#if confirm}}'{{confirm}}'{{else}}null{{/if}})"
+        >{{label}}</button>
+      {{else}}
+        <a href="{{url}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-body rounded-md border border-default hover:bg-surface-hover">{{label}}</a>
+      {{/if}}
+    {{/each}}
+  </div>
+</div>
+{{/if}}

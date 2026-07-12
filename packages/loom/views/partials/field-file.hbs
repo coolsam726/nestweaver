@@ -1,0 +1,32 @@
+<div class="loom-field loom-field--media" data-loom-media-field="{{name}}">
+  <input
+    type="hidden"
+    name="{{name}}"
+    id="field-{{name}}"
+    value="{{lookup @root.record name}}"
+    data-loom-media-value
+  />
+  {{#unless @root.readonly}}
+    <input
+      type="file"
+      class="loom-input"
+      data-loom-media-file
+      data-upload-url="{{@root.mediaUploadUrl}}"
+      data-field-name="{{name}}"
+      data-field-type="{{type}}"
+      {{#if media.maxBytes}}data-max-bytes="{{media.maxBytes}}"{{/if}}
+      {{#if media.accept}}accept="{{#each media.accept}}{{this}}{{#unless @last}},{{/unless}}{{/each}}"{{else if (eq type 'image')}}accept="image/*"{{/if}}
+      {{#if disabled}}disabled{{/if}}
+    />
+    <p class="loom-field__help text-xs mt-1" data-loom-media-status hidden></p>
+  {{/unless}}
+  {{#if (lookup @root.record name)}}
+    <div class="mt-2" data-loom-media-preview>
+      {{#if (eq type 'image')}}
+        <img src="{{lookup @root.record name}}" alt="{{label}}" class="max-h-32 rounded-md border border-default object-contain" />
+      {{else}}
+        <a href="{{lookup @root.record name}}" class="text-sm text-fg-brand hover:underline" target="_blank" rel="noopener">View file</a>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

@@ -29,6 +29,9 @@
     </div>
     <div class="flex flex-wrap items-center gap-2 shrink-0">
       {{> list-view-switcher}}
+      {{#each headerActions}}
+        <a href="{{url}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-default text-body rounded-md hover:bg-surface-hover transition">{{label}}</a>
+      {{/each}}
       {{#if showCreateButton}}
         {{#if (eq resource.presentation.form 'modal')}}
           <button

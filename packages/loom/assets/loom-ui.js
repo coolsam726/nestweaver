@@ -300,6 +300,77 @@
       : 'Refresh (double-click for auto-refresh every 10s)';
   }
 
+  function bindMediaUploads() {
+    document.querySelectorAll('[data-loom-media-file]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const root = input.closest('[data-loom-media-field]');
+        const hidden = root?.querySelector('[data-loom-media-value]');
+        const status = root?.querySelector('[data-loom-media-status]');
+        const uploadUrl = input.dataset.uploadUrl;
+        const fieldName = input.dataset.fieldName;
+        const maxBytes = Number(input.dataset.maxBytes || 0);
+        if (!uploadUrl || !fieldName || !(hidden instanceof HTMLInputElement)) return;
+        if (maxBytes > 0 && file.size > maxBytes) {
+          if (status instanceof HTMLElement) {
+            status.hidden = false;
+            status.textContent = `File exceeds ${maxBytes} bytes.`;
+          }
+          input.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            if (status instanceof HTMLElement) {
+              status.hidden = false;
+              status.textContent = 'Uploading…';
+            }
+            const data = String(reader.result ?? '');
+            const res = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-Token': csrfToken() || '',
+              },
+              credentials: 'same-origin',
+              body: JSON.stringify({
+                field: fieldName,
+                filename: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                data,
+              }),
+            });
+            const payload = await res.json();
+            if (!res.ok) throw new Error(payload?.message || 'Upload failed');
+            hidden.value = payload.media?.url || '';
+            if (status instanceof HTMLElement) {
+              status.textContent = 'Uploaded.';
+            }
+            const preview = root?.querySelector('[data-loom-media-preview]');
+            if (preview instanceof HTMLElement && hidden.value) {
+              if (input.dataset.fieldType === 'image') {
+                preview.innerHTML = `<img src="${hidden.value}" alt="" class="max-h-32 rounded-md border border-default object-contain" />`;
+              } else {
+                preview.innerHTML = `<a href="${hidden.value}" class="text-sm text-fg-brand hover:underline" target="_blank" rel="noopener">View file</a>`;
+              }
+            }
+          } catch (error) {
+            if (status instanceof HTMLElement) {
+              status.textContent =
+                error instanceof Error ? error.message : 'Upload failed';
+            }
+            input.value = '';
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+
   function bindListRefresh() {
     const root = document.querySelector('[data-loom-list-root]');
     const button = document.querySelector('[data-loom-list-refresh]');
@@ -1174,6 +1245,54 @@
     Alpine.data('loomM2mCheckboxFromEl', (el) => createLoomM2mCheckbox(readM2mConfig(el)));
     Alpine.data('loomM2mTableFromEl', (el) => createLoomM2mTable(readM2mConfig(el)));
 
+    Alpine.data('loomListSelection', () => ({
+      selected: [],
+      toggleId(id) {
+        const value = String(id);
+        if (this.selected.includes(value)) {
+          this.selected = this.selected.filter((item) => item !== value);
+        } else {
+          this.selected = [...this.selected, value];
+        }
+      },
+      toggleAll(checked) {
+        const ids = Array.from(document.querySelectorAll('[data-loom-record-id]'))
+          .map((row) => row.getAttribute('data-loom-record-id'))
+          .filter(Boolean)
+          .map(String);
+        this.selected = checked ? ids : [];
+      },
+      submitBulk(url, action, confirmMessage) {
+        if (!this.selected.length) return;
+        if (confirmMessage && !window.confirm(confirmMessage)) return;
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = url;
+        const token = csrfToken();
+        if (token) {
+          const csrfInput = document.createElement('input');
+          csrfInput.type = 'hidden';
+          csrfInput.name = '_csrf';
+          csrfInput.value = token;
+          form.appendChild(csrfInput);
+        }
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+        for (const id of this.selected) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'ids';
+          input.value = id;
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+      },
+    }));
+
     Alpine.data('loomDialogHost', () => ({
       open: false,
       loading: false,
@@ -1605,5 +1724,6 @@
     applyListHrefs();
     bindListViewSwitcher();
     bindListRefresh();
+    bindMediaUploads();
   });
 })();

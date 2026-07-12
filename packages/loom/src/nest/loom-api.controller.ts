@@ -19,6 +19,7 @@ import { LoomAuthorizationError } from '../core/abilities.js';
 import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { LoomCsrfError } from '../core/csrf.js';
 import { normalizeListQuery } from '../core/list-query.js';
+import { buildLoomOpenApiSpec } from '../core/openapi.js';
 import type { SortDirection } from '../core/types.js';
 import { LoomPublic } from './loom-auth.decorators.js';
 import { LoomAuthContextInterceptor } from './loom-auth-context.interceptor.js';
@@ -128,6 +129,19 @@ export function createLoomApiController(
           abilities: this.loom.abilitiesFor(meta.slug),
         })),
       };
+    }
+
+    @Get('openapi.json')
+    openApiDocument() {
+      if (!this.loom.openapiEnabled) {
+        throw new HttpException('OpenAPI is not enabled', HttpStatus.NOT_FOUND);
+      }
+      return buildLoomOpenApiSpec({
+        title: this.loom.panelTitle,
+        apiPrefix: this.loom.apiPrefix,
+        version: this.loom.apiVersion,
+        resources: this.loom.accessibleResources(),
+      });
     }
 
     @LoomPublic()
@@ -261,6 +275,86 @@ export function createLoomApiController(
       }
       setResponseCookies(res, this.auth.clearSessionCookies());
       sendJson(res, 200, { ok: true });
+    }
+
+    @Get(':resource/export')
+    async exportResource(
+      @Param('resource') resource: string,
+      @Query('page') page = '1',
+      @Query('perPage') perPage = '15',
+      @Query('search') search?: string,
+      @Query('sort') sort?: string,
+      @Query('direction') direction?: SortDirection,
+      @Query('trashed') trashed?: string,
+      @Query('format') format?: string,
+      @Res() res?: {
+        setHeader?: (name: string, value: string) => void;
+        header?: (name: string, value: string) => unknown;
+        send?: (body?: unknown) => unknown;
+      },
+    ) {
+      try {
+        const query = normalizeListQuery({ page, perPage, search, sort, direction, trashed });
+        const exportFormat = this.loom.parseExportFormat(format);
+        const exported = await this.loom.exportRecords(resource, query, exportFormat);
+        if (res) {
+          res.setHeader?.('Content-Type', exported.contentType);
+          res.setHeader?.(
+            'Content-Disposition',
+            `attachment; filename="${exported.filename}"`,
+          );
+          res.header?.('Content-Type', exported.contentType);
+          res.header?.(
+            'Content-Disposition',
+            `attachment; filename="${exported.filename}"`,
+          );
+          res.send?.(exported.body);
+          return;
+        }
+        return exported;
+      } catch (error) {
+        throw mapApiError(error);
+      }
+    }
+
+    @Post(':resource/bulk')
+    async bulkAction(
+      @Param('resource') resource: string,
+      @Body() body: { action?: string; ids?: string[] },
+    ) {
+      try {
+        const action = body.action ?? 'delete';
+        const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
+        if (action === 'delete') {
+          return await this.loom.bulkDelete(resource, ids);
+        }
+        throw new HttpException(`Unknown bulk action "${action}"`, HttpStatus.BAD_REQUEST);
+      } catch (error) {
+        throw mapApiError(error);
+      }
+    }
+
+    @Post(':resource/media/upload')
+    async uploadMedia(
+      @Param('resource') resource: string,
+      @Body()
+      body: {
+        field?: string;
+        filename?: string;
+        mimeType?: string;
+        data?: string;
+      },
+    ) {
+      try {
+        const stored = await this.loom.uploadMedia(resource, String(body.field ?? ''), {
+          filename: String(body.filename ?? 'upload'),
+          mimeType: String(body.mimeType ?? 'application/octet-stream'),
+          data: String(body.data ?? ''),
+        });
+        return { ok: true, media: stored };
+      } catch (error) {
+        throw mapApiError(error);
+      }
     }
 
     @Get(':resource')

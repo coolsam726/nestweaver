@@ -17,8 +17,31 @@ import {
   type RelationOptionsMap,
 } from '../core/relations.js';
 import { createTranslator } from '../core/i18n.js';
+import {
+  emitLoomAudit,
+  redactAuditRecord,
+  resolveAuditConfig,
+  type LoomAuditConfig,
+} from '../core/audit.js';
+import {
+  buildExportFilename,
+  exportColumns,
+  parseExportFormat,
+  recordsToCsv,
+  recordsToJson,
+  type ExportFormat,
+} from '../core/export.js';
+import { canExport } from '../core/list-actions.js';
 import type { ListQuery, ResourceMeta, LoomModuleOptions, LoomCompany } from '../core/types.js';
-import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
+import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY, LOOM_STORAGE } from '../core/types.js';
+import {
+  decodeBase64Upload,
+  validateMediaUpload,
+  type LoomStorageAdapter,
+  type StoredMedia,
+} from '../core/storage.js';
+import { recordIdFrom } from '../adapters/adapter.js';
+import { LoomAuthService } from './loom-auth.service.js';
 import {
   currentCsrfToken,
   currentLoomUser,
@@ -42,21 +65,23 @@ import {
   resourceCompanyField,
   tenancyEnabled,
 } from '../core/tenancy.js';
-import { setRequestContextField } from '../core/request-context.js';
-import { recordIdFrom } from '../adapters/adapter.js';
-import { LoomAuthService } from './loom-auth.service.js';
+import { currentRequestContext, setRequestContextField } from '../core/request-context.js';
 
 @Injectable()
 export class LoomService {
   private readonly logger = new Logger(LoomService.name);
+  private readonly auditConfig: LoomAuditConfig | null;
 
   constructor(
     @Inject(LOOM_ADAPTER) private readonly adapter: LoomAdapter,
     @Inject(LOOM_REGISTRY) private readonly registry: ResourceRegistry,
     @Inject(LOOM_OPTIONS) private readonly options: LoomModuleOptions,
+    @Inject(LOOM_STORAGE) private readonly storage: LoomStorageAdapter | null,
     @Inject(forwardRef(() => LoomAuthService))
     private readonly authService: LoomAuthService,
-  ) {}
+  ) {
+    this.auditConfig = resolveAuditConfig(this.options.audit);
+  }
 
   private async timed<T>(op: string, slug: string, fn: () => Promise<T> | T): Promise<T> {
     const threshold = this.options.observability?.slowQueryMs;
@@ -111,7 +136,40 @@ export class LoomService {
     if (api && typeof api === 'object' && api.prefix) {
       return api.prefix.replace(/^\//, '').replace(/\/$/, '');
     }
+    if (api && typeof api === 'object' && api.version) {
+      const version = api.version.replace(/^\//, '').replace(/\/$/, '');
+      return version ? `api/loom/${version}` : 'api/loom';
+    }
     return 'api/loom';
+  }
+
+  get apiVersion(): string | undefined {
+    const api = this.options.api;
+    if (api && typeof api === 'object') return api.version;
+    return undefined;
+  }
+
+  get openapiEnabled(): boolean {
+    const api = this.options.api;
+    if (!this.apiEnabled || !api || typeof api !== 'object') return false;
+    return Boolean(api.openapi);
+  }
+
+  get storageEnabled(): boolean {
+    return Boolean(this.storage);
+  }
+
+  get localMediaRoot(): string | null {
+    const storage = this.options.storage;
+    if (
+      storage &&
+      typeof storage === 'object' &&
+      'disk' in storage &&
+      (storage as import('../core/storage.js').LocalStorageConfig).disk === 'local'
+    ) {
+      return (storage as import('../core/storage.js').LocalStorageConfig).root;
+    }
+    return null;
   }
 
   resources(): ResourceMeta[] {
@@ -206,13 +264,24 @@ export class LoomService {
     if (slug === userSlug && writable[passwordField] != null) {
       await this.authService.bumpSessionVersion(id);
     }
+    await this.auditMutation(slug, 'update', {
+      recordId: id,
+      before: existing,
+      after: updated,
+    });
     return updated;
   }
 
   async delete(slug: string, id: string) {
     const existing = await this.adapter.findOne(this.meta(slug), id);
     this.authorizeRecord(slug, 'delete', existing);
-    return this.adapter.delete(this.meta(slug), id);
+    const result = await this.adapter.delete(this.meta(slug), id);
+    await this.auditMutation(slug, 'delete', {
+      recordId: id,
+      before: existing,
+      after: null,
+    });
+    return result;
   }
 
   async restore(slug: string, id: string) {
@@ -225,7 +294,111 @@ export class LoomService {
     if (!this.adapter.restore) {
       throw new Error('Adapter does not support restore');
     }
-    return this.adapter.restore(meta, id);
+    const restored = await this.adapter.restore(meta, id);
+    await this.auditMutation(slug, 'restore', {
+      recordId: id,
+      before: existing,
+      after: restored,
+    });
+    return restored;
+  }
+
+  async bulkDelete(slug: string, ids: string[]) {
+    const unique = [...new Set(ids.map(String).filter(Boolean))];
+    let deleted = 0;
+    for (const id of unique) {
+      try {
+        await this.delete(slug, id);
+        deleted += 1;
+      } catch {
+        // skip unauthorized or missing rows
+      }
+    }
+    await emitLoomAudit(this.auditConfig, {
+      action: 'bulkDelete',
+      resource: slug,
+      recordIds: unique,
+      userId: this.authUser()?.id,
+      userEmail: this.authUser()?.email,
+      requestId: currentRequestContext()?.requestId,
+      meta: { deleted },
+    });
+    return { deleted, total: unique.length };
+  }
+
+  async exportRecords(
+    slug: string,
+    query: ListQuery,
+    format: ExportFormat,
+  ): Promise<{ body: string; filename: string; contentType: string }> {
+    this.authorizeExport(slug);
+    const meta = this.meta(slug);
+    const user = this.authUser();
+    const policy = this.policyFor(slug);
+    const scoped = {
+      ...query,
+      page: 1,
+      perPage: 10_000,
+      scope: this.mergedScope(slug, user, query.scope, policy),
+    };
+    const result = await this.adapter.list(meta, scoped);
+    const columns = exportColumns(meta);
+    const items = result.items.map((item) => this.sanitizeRecord(meta, item));
+    const body = format === 'json' ? recordsToJson(items) : recordsToCsv(items, columns);
+    await emitLoomAudit(this.auditConfig, {
+      action: 'export',
+      resource: slug,
+      userId: user?.id,
+      userEmail: user?.email,
+      requestId: currentRequestContext()?.requestId,
+      meta: { format, count: items.length },
+    });
+    return {
+      body,
+      filename: buildExportFilename(slug, format),
+      contentType: format === 'json' ? 'application/json' : 'text/csv',
+    };
+  }
+
+  async uploadMedia(
+    slug: string,
+    fieldName: string,
+    input: { filename: string; mimeType: string; data: string },
+  ): Promise<StoredMedia> {
+    if (!this.storage) {
+      throw new Error('Loom storage is not configured');
+    }
+    this.authorize(slug, 'create');
+    const meta = this.meta(slug);
+    const field = meta.fields.find((item) => item.name === fieldName);
+    if (!field || (field.type !== 'file' && field.type !== 'image')) {
+      throw new Error(`Unknown media field "${fieldName}"`);
+    }
+    const buffer = decodeBase64Upload(input.data);
+    validateMediaUpload(
+      { mimeType: input.mimeType, size: buffer.length },
+      field.media ?? {},
+      field.type,
+    );
+    return this.storage.store({
+      buffer,
+      filename: input.filename,
+      mimeType: input.mimeType,
+      directory: field.media?.disk ?? `${slug}/${fieldName}`,
+    });
+  }
+
+  authorizeExport(slug: string): void {
+    const user = this.authUser();
+    if (!this.authEnabled) return;
+    const abilities = this.abilitiesFor(slug);
+    if (!canExport(user, this.authEnabled, slug, abilities.canViewAny)) {
+      throw new LoomAuthorizationError(`Missing permission to export ${slug}`);
+    }
+  }
+
+  parseExportFormat(value: string | undefined): ExportFormat {
+    return parseExportFormat(value);
   }
 
   navigationGroups() {
@@ -419,7 +592,13 @@ export class LoomService {
       writable[ownerField] = user.id;
     }
     this.stampCompany(slug, writable, user);
-    return this.adapter.create(this.meta(slug), writable);
+    const created = await this.adapter.create(this.meta(slug), writable);
+    await this.auditMutation(slug, 'create', {
+      recordId: recordIdFrom(created),
+      before: null,
+      after: created,
+    });
+    return created;
   }
 
   private authUser(): LoomAuthUser | null {
@@ -585,6 +764,37 @@ export class LoomService {
       }
     }
     return out;
+  }
+
+  private async auditMutation(
+    slug: string,
+    action: 'create' | 'update' | 'delete' | 'restore',
+    input: {
+      recordId: string;
+      before: Record<string, unknown> | null;
+      after: Record<string, unknown> | null;
+    },
+  ): Promise<void> {
+    const meta = this.meta(slug);
+    const user = this.authUser();
+    await emitLoomAudit(this.auditConfig, {
+      action,
+      resource: slug,
+      recordId: input.recordId,
+      userId: user?.id,
+      userEmail: user?.email,
+      requestId: currentRequestContext()?.requestId,
+      before: redactAuditRecord(
+        input.before,
+        meta.fields,
+        this.auditConfig?.redactFields,
+      ),
+      after: redactAuditRecord(
+        input.after,
+        meta.fields,
+        this.auditConfig?.redactFields,
+      ),
+    });
   }
 }
 

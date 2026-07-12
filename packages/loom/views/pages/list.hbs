@@ -1,5 +1,6 @@
 <section
   class="space-y-4"
+  x-data="loomListSelection()"
   data-loom-list-root="{{resource.slug}}"
   data-loom-base-path="{{basePath}}"
   data-loom-current-view="table"
@@ -7,14 +8,24 @@
 >
   <div class="loom-card rounded-xl overflow-hidden">
     {{> list-toolbar}}
+    {{> list-bulk-bar}}
 
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-surface-header">
           <tr>
-            <th class="w-9 px-3 py-3" aria-label="Select">
-              <span class="block w-3.5 h-3.5 rounded bg-surface-inset"></span>
+            {{#if bulkEnabled}}
+            <th class="w-9 px-3 py-3">
+              <input
+                type="checkbox"
+                class="rounded border-default text-fg-brand focus:ring-fg-brand/30"
+                aria-label="Select all"
+                @change="toggleAll($event.target.checked)"
+              />
             </th>
+            {{else}}
+            <th class="w-9 px-3 py-3" aria-hidden="true"></th>
+            {{/if}}
             {{#each resource.columns}}
               <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-body-subtle whitespace-nowrap">
                 {{#if sortable}}
@@ -41,8 +52,21 @@
         </thead>
         <tbody>
           {{#each result.items}}
-            <tr class="hover:bg-surface-row-hover transition-colors">
+            <tr class="hover:bg-surface-row-hover transition-colors" data-loom-record-id="{{this.id}}">
+              {{#if ../bulkEnabled}}
+              <td class="px-3 py-3">
+                <input
+                  type="checkbox"
+                  class="rounded border-default text-fg-brand focus:ring-fg-brand/30"
+                  value="{{this.id}}"
+                  :checked="selected.includes('{{this.id}}')"
+                  @change="toggleId('{{this.id}}')"
+                  aria-label="Select row"
+                />
+              </td>
+              {{else}}
               <td class="px-3 py-3"></td>
+              {{/if}}
               {{#each ../resource.columns}}
                 <td class="px-4 py-3 text-body">
                   {{#if (eq type 'boolean')}}
