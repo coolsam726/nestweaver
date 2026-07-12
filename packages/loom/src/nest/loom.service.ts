@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { computeDisplayName } from '../core/display-name.js';
 import type { LoomAdapter } from '../adapters/adapter.js';
 import { resolveBranding, type LoomBranding } from '../core/branding.js';
@@ -10,12 +10,18 @@ import {
   buildRelationOptionsForForm,
   relationQuickCreate,
   searchRelationOptions,
+  shouldPreloadRelation,
   type RelationFieldContextMap,
   type RelationLabelMap,
   type RelationOption,
   type RelationOptionsMap,
 } from '../core/relations.js';
+<<<<<<< HEAD
 import type { ListQuery, ResourceMeta, LoomModuleOptions, LoomCompany } from '../core/types.js';
+=======
+import { createTranslator } from '../core/i18n.js';
+import type { ListQuery, ResourceMeta, LoomModuleOptions } from '../core/types.js';
+>>>>>>> origin/main
 import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
 import {
   currentCsrfToken,
@@ -46,6 +52,8 @@ import { LoomAuthService } from './loom-auth.service.js';
 
 @Injectable()
 export class LoomService {
+  private readonly logger = new Logger(LoomService.name);
+
   constructor(
     @Inject(LOOM_ADAPTER) private readonly adapter: LoomAdapter,
     @Inject(LOOM_REGISTRY) private readonly registry: ResourceRegistry,
@@ -53,6 +61,19 @@ export class LoomService {
     @Inject(forwardRef(() => LoomAuthService))
     private readonly authService: LoomAuthService,
   ) {}
+
+  private async timed<T>(op: string, slug: string, fn: () => Promise<T> | T): Promise<T> {
+    const threshold = this.options.observability?.slowQueryMs;
+    const started = Date.now();
+    try {
+      return await fn();
+    } finally {
+      const ms = Date.now() - started;
+      if (threshold != null && ms >= threshold) {
+        this.logger.warn(`Slow Loom ${op} on ${slug}: ${ms}ms`);
+      }
+    }
+  }
 
   get csrfToken(): string {
     return currentCsrfToken();
@@ -68,6 +89,14 @@ export class LoomService {
   get branding(): LoomBranding {
     const company = this.companies.find((item) => item.id === this.currentCompanyId);
     return resolveBranding(this.options.branding, company?.branding, this.options.title);
+  }
+
+  get locale(): string {
+    return this.options.locale ?? 'en';
+  }
+
+  t(key: string, fallback?: string): string {
+    return createTranslator(this.locale, this.options.messages)(key, fallback);
   }
 
   get authEnabled(): boolean {
@@ -158,7 +187,7 @@ export class LoomService {
       ...query,
       scope: this.mergedScope(slug, user, query.scope, policy),
     };
-    return this.adapter.list(this.meta(slug), scoped);
+    return this.timed('list', slug, () => this.adapter.list(this.meta(slug), scoped));
   }
 
   async findOne(slug: string, id: string) {
@@ -188,6 +217,19 @@ export class LoomService {
     const existing = await this.adapter.findOne(this.meta(slug), id);
     this.authorizeRecord(slug, 'delete', existing);
     return this.adapter.delete(this.meta(slug), id);
+  }
+
+  async restore(slug: string, id: string) {
+    const meta = this.meta(slug);
+    if (!meta.softDelete) {
+      throw new Error(`Soft delete is not enabled for ${slug}`);
+    }
+    const existing = await this.adapter.findOne(meta, id);
+    this.authorizeRecord(slug, 'edit', existing);
+    if (!this.adapter.restore) {
+      throw new Error('Adapter does not support restore');
+    }
+    return this.adapter.restore(meta, id);
   }
 
   navigationGroups() {
@@ -279,13 +321,19 @@ export class LoomService {
 
   async relationOptionsForForm(meta: ResourceMeta): Promise<RelationOptionsMap> {
     const user = this.authUser();
-    return buildRelationOptionsForForm(this.adapter, this.registry, meta, (resourceSlug) => {
-      if (this.authEnabled) {
-        try {
-          this.authorize(resourceSlug, 'viewAny');
-        } catch {
-          return { equals: { id: '__loom_denied__' } };
+    return buildRelationOptionsForForm(
+      this.adapter,
+      this.registry,
+      meta,
+      (resourceSlug) => {
+        if (this.authEnabled) {
+          try {
+            this.authorize(resourceSlug, 'viewAny');
+          } catch {
+            return { equals: { id: '__loom_denied__' } };
+          }
         }
+<<<<<<< HEAD
       }
       return this.mergedScope(
         resourceSlug,
@@ -294,6 +342,12 @@ export class LoomService {
         this.policyFor(resourceSlug),
       );
     });
+=======
+        return scopeList(this.policyFor(resourceSlug), user, resourceSlug);
+      },
+      (relation) => shouldPreloadRelation(relation),
+    );
+>>>>>>> origin/main
   }
 
   async relationLabelsForRecords(

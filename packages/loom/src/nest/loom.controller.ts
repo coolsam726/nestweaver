@@ -433,24 +433,27 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
       @Query('search') search?: string,
       @Query('sort') sort?: string,
       @Query('direction') direction?: SortDirection,
+      @Query('trashed') trashed?: string,
       @Query('success') success?: string,
       @Query('error') error?: string,
     ): Promise<string> {
       try {
         const meta = this.loom.meta(resource);
         const abilities = this.loom.abilitiesFor(resource);
-        const query = normalizeListQuery({ page, perPage, search, sort, direction });
+        const query = normalizeListQuery({ page, perPage, search, sort, direction, trashed });
         const result = await this.loom.list(resource, query);
         const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
         return this.views.render('list', await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.label,
           pageSubtitle: `${result.total} records`,
-          showCreateButton: abilities.canCreate,
+          showCreateButton: abilities.canCreate && query.trashed !== 'only',
           resource: meta,
           abilities,
           result,
           query,
+          trashed: query.trashed === 'only',
+          softDeleteEnabled: Boolean(meta.softDelete),
           relationLabels,
           pagination: buildPaginationContext(this.loom.basePath, resource, query, result),
           flash: flashFromQuery(success, error),
@@ -746,6 +749,29 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         };
       }
     }
+
+    @Post(':resource/:id/restore')
+    @Redirect()
+    async restoreRecord(
+      @Param('resource') resource: string,
+      @Param('id') id: string,
+    ): Promise<{ url: string; statusCode: number }> {
+      try {
+        await this.loom.restore(resource, id);
+        return {
+          url: `${this.loom.basePath}/${resource}?trashed=1&success=restored`,
+          statusCode: 302,
+        };
+      } catch (error) {
+        const message = encodeURIComponent(
+          error instanceof Error ? error.message : 'Restore failed',
+        );
+        return {
+          url: `${this.loom.basePath}/${resource}?trashed=1&error=${message}`,
+          statusCode: 302,
+        };
+      }
+    }
   }
 
   return LoomController;
@@ -821,6 +847,8 @@ async function shellContext(
     logoutPath: `${loom.basePath}/logout`,
     csrfToken: currentCsrfToken(),
     abilities,
+    t: loom.t.bind(loom),
+    locale: loom.locale,
     ...menu,
     ...extra,
   };
