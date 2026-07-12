@@ -21,6 +21,7 @@ import { buildPaginationContext, normalizeListQuery } from '../core/list-query.j
 import { buildBrandingCss } from '../core/branding.js';
 import type { ResourceMeta, SortDirection } from '../core/types.js';
 import { flashFromQuery } from '../core/flash.js';
+import { currentRequestContext } from '../core/request-context.js';
 import { LoomAuthorizationError } from '../core/abilities.js';
 import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { loomAdminCssPath, loomUiJsPath } from './paths.js';
@@ -312,6 +313,9 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
 
     @Post('company/switch')
     async switchCompany(
+      @Req() req: {
+        headers?: Record<string, unknown>;
+      },
       @Body() body: Record<string, unknown>,
       @Res() res: {
         setHeader?: (name: string, value: string) => void;
@@ -334,10 +338,11 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         raw === undefined || raw === null
           ? ''
           : String(raw);
-      const redirectTo =
-        typeof redirect === 'string' && redirect.startsWith(this.loom.basePath)
-          ? redirect
-          : this.loom.basePath;
+      const redirectTo = resolveCompanySwitchRedirect(
+        body.redirect ?? redirect,
+        req.headers?.referer ?? req.headers?.Referer,
+        this.loom.basePath,
+      );
       try {
         const result = await this.auth.switchCompany(user, companyId);
         setResponseCookies(res, result.cookies);
@@ -346,7 +351,8 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const message = encodeURIComponent(
           error instanceof Error ? error.message : 'Could not switch company',
         );
-        sendRedirect(res, `${redirectTo}?error=${message}`);
+        const sep = redirectTo.includes('?') ? '&' : '?';
+        sendRedirect(res, `${redirectTo}${sep}error=${message}`);
       }
     }
 
@@ -769,9 +775,28 @@ async function shellContext(
 ): Promise<Record<string, unknown>> {
   const pageTitle = (extra.pageTitle as string | undefined) ?? loom.panelTitle;
   const menu = loom.menuContext(extra.currentSlug, pageTitle);
-  const companies = await loom.shellCompanies();
-  const currentCompanyId = loom.currentCompanyId;
-  const currentCompany = companies.find((c) => c.id === currentCompanyId);
+  const rawCompanyId = loom.currentCompanyId;
+  const currentCompanyId =
+    rawCompanyId != null && String(rawCompanyId) !== ''
+      ? String(rawCompanyId)
+      : undefined;
+  const companies = (await loom.shellCompanies()).map((company) => {
+    const id = String(company.id);
+    return {
+      ...company,
+      id,
+      current: currentCompanyId != null && id === currentCompanyId,
+    };
+  });
+  const currentCompany = companies.find((c) => c.current) ?? companies.find((c) => c.id === currentCompanyId);
+  const requestPath = currentRequestContext()?.path;
+  const switchRedirect =
+    typeof requestPath === 'string' &&
+    requestPath.startsWith(loom.basePath) &&
+    !requestPath.includes('/company/switch') &&
+    !requestPath.includes('/login')
+      ? safeRedirect(requestPath, loom.basePath)
+      : loom.basePath;
   const abilities =
     extra.abilities ??
     (extra.currentSlug ? loom.abilitiesFor(extra.currentSlug) : undefined);
@@ -785,9 +810,11 @@ async function shellContext(
     companies,
     currentCompanyId,
     currentCompanyName: currentCompany?.name,
+    allCompaniesSelected: loom.tenancyEnabled && !currentCompanyId,
     tenancyEnabled: loom.tenancyEnabled,
     canViewAllCompanies: loom.canViewAllCompanies,
     switchCompanyPath: `${loom.basePath}/company/switch`,
+    switchRedirect,
     user: loom.user,
     userInitial: loom.userInitial(),
     authEnabled: loom.authEnabled,
@@ -809,6 +836,32 @@ function mapAuthError(error: unknown, fallbackStatus = HttpStatus.FORBIDDEN): Ht
     error instanceof Error ? error.message : 'Request failed',
     fallbackStatus,
   );
+}
+
+
+function resolveCompanySwitchRedirect(
+  explicit: unknown,
+  referer: unknown,
+  basePath: string,
+): string {
+  const fromBody = safeRedirect(explicit, '');
+  if (fromBody) return fromBody;
+  if (typeof referer === 'string' && referer.trim()) {
+    try {
+      const url = new URL(referer, 'http://localhost');
+      const path = `${url.pathname}${url.search}`;
+      if (
+        path.startsWith(basePath) &&
+        !path.includes('/company/switch') &&
+        !path.includes('/login')
+      ) {
+        return path;
+      }
+    } catch {
+      // ignore invalid referer
+    }
+  }
+  return basePath;
 }
 
 function safeRedirect(value: unknown, fallback: string): string {

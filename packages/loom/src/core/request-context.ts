@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 export interface LoomRequestContext {
   requestId: string;
   userId?: string;
+  /** Full request path including query (for post-redirect-get return). */
+  path?: string;
   resource?: string;
   ability?: string;
 }
