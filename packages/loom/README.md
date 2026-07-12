@@ -154,8 +154,9 @@ Inject tokens by ORM:
 | `api` | `boolean \| { enabled?, prefix? }` | enabled | JSON API at `/api/loom` |
 | `observability` | `{ onError?, slowQueryMs? }` | — | Request IDs always set; optional error / slow-query hooks |
 | `locale` / `messages` | `en` / overrides | — | Admin string catalog (`t('auth.signIn')`) |
-| `companies` | `LoomCompany[]` | — | Branding lookup only — **no tenant switcher**, no tenancy enforcement |
-| `currentCompanyId` | `string` | — | Display/branding merge only (static topbar label) |
+| `companies` | `LoomCompany[]` | — | Branding overrides (merged by id when tenancy loads live companies) |
+| `currentCompanyId` | `string` | — | Fallback company id when the session has none |
+| `auth.tenancy` | `false \| LoomTenancyConfig` | off | Session company, topbar switcher, and `companyScoped` filtering |
 | `user` | `{ name, email?, avatar?, role? }` | — | Shell profile when auth is off |
 
 Adapter resolution order: custom `adapter` → noop (no resources) → `createLoomAdapter(orm, dataSource)`.
@@ -177,6 +178,7 @@ Every admin screen is a `Resource` subclass (or one built with `defineResource` 
 | `navigationGroup` | Primary nav group (default `General`) |
 | `navigationSection` | Secondary topbar section |
 | `recordTitleField` | Field used for titles (default `name`) |
+| `companyScoped` / `companyField` | Opt into tenancy scoping when `auth.tenancy` is on |
 | `policy` | Optional [Policy](#policies) class |
 | `form` / `table` / `detail` / `kanban` | Schemas |
 | `headerActions` / `recordActions` | Toolbar / row actions |
@@ -481,7 +483,7 @@ List actions are gated by the current user’s abilities (`@root.abilities` in t
 | Audit log | Not implemented |
 | Bulk action bar | Action API only |
 | CSRF tokens / session revocation | Shipped (cookie double-submit + session version) |
-| Interactive company/tenant switcher | Display chrome only — use [policies](#policies) for scoping |
+| Interactive company/tenant switcher | Enable with `auth.tenancy` + `companyScoped` resources |
 ---
 
 ## Authentication
@@ -784,7 +786,7 @@ All paths are under `basePath` (default `/admin`).
 
 - Sidebar + mobile drawer
 - Topbar secondary sections
-- Company list in the topbar (**display/branding only** — not a working tenant switcher)
+- Company switcher in the topbar when `auth.tenancy` is enabled (otherwise branding label only)
 - User profile + logout
 - Dark mode toggle (`localStorage` key `loom-theme`)
 - Breadcrumbs, page heading, themed checkboxes, access-denied page
@@ -943,9 +945,40 @@ Runtime CSS: `{basePath}/assets/branding.css`.
 | `LOOM_AUTH_SECRET` | Enable auth (HMAC secret) |
 | `LOOM_ADMIN_EMAIL` / `PASSWORD` / `NAME` | Scaffold seed defaults |
 
-### Companies
+### Company tenancy
 
-`companies` / `currentCompanyId` only control shell branding (static topbar label). They do **not** switch tenants or scope queries. Enforce company isolation in your policies or adapter queries if needed.
+Enable with `auth.tenancy` and opt resources in with `companyScoped` (or `companyField`):
+
+```typescript
+auth: {
+  secret: process.env.LOOM_AUTH_SECRET!,
+  tenancy: {
+    enabled: true,
+    companyResource: 'companies',
+    companyField: 'companyId',
+    membershipField: 'companyIds', // default — set false for home-company only
+  },
+},
+```
+
+```typescript
+class ContactResource extends Resource {
+  static override companyScoped = true;
+}
+```
+
+**User membership:** each user has `companyIds` (supported companies) plus optional home `companyId`.
+Non-admins may only switch to ids in `companyIds` (falls back to home when the list is empty).
+Admins can switch to any company or “All companies”. Assign membership on the Users resource.
+
+When enabled:
+
+- Session stores the active `companyId` (admins may clear it for “All companies”)
+- Switcher lists only the user’s supported companies (admins see all)
+- `companyScoped` resources are list-filtered and IDOR-checked; creates stamp the active company
+- Topbar posts to `/admin/company/switch` (CSRF); JSON API: `GET /api/loom/companies`, `POST /api/loom/company/switch`
+
+Without tenancy, `companies` / `currentCompanyId` remain branding-only:
 
 ```typescript
 companies: [

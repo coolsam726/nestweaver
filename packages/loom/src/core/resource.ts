@@ -82,6 +82,13 @@ export abstract class Resource {
   /** Optional record-level policy (instance checks + list scope) */
   static policy?: PolicyClass;
   /**
+   * Scope this resource to the active company when `auth.tenancy` is enabled.
+   * Uses `companyId` unless `companyField` is set.
+   */
+  static companyScoped?: boolean;
+  /** Company FK field (implies company scoping when tenancy is on). */
+  static companyField?: string;
+  /**
    * Soft-delete: stamp `deletedAt` (or `{ field }`) instead of hard delete.
    * List excludes trashed rows unless `?trashed=1`.
    */
@@ -200,6 +207,8 @@ export abstract class Resource {
       hasExplicitDetail,
       presentation,
       customPermissions: normalizeCustomPermissions(this.slug, this.permissions()),
+      companyScoped: this.companyScoped,
+      companyField: this.companyField,
       softDelete: this.softDelete,
     };
   }

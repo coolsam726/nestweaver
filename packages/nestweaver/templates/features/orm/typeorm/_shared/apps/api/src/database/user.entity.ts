@@ -28,6 +28,10 @@ export class User {
   @Column({ default: 0 })
   sessionVersion!: number;
 
+  /** Companies this user may switch into (Loom tenancy membership) */
+  @Column('simple-array', { nullable: true })
+  companyIds?: string[];
+
   @Column({ nullable: true })
   companyId?: number;
 

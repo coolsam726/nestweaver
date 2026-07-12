@@ -21,6 +21,7 @@ import { buildPaginationContext, normalizeListQuery } from '../core/list-query.j
 import { buildBrandingCss } from '../core/branding.js';
 import type { ResourceMeta, SortDirection } from '../core/types.js';
 import { flashFromQuery } from '../core/flash.js';
+import { currentRequestContext } from '../core/request-context.js';
 import { LoomAuthorizationError } from '../core/abilities.js';
 import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { loomAdminCssPath, loomUiJsPath } from './paths.js';
@@ -310,10 +311,55 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
       sendRedirect(res, this.auth.loginPath);
     }
 
+    @Post('company/switch')
+    async switchCompany(
+      @Req() req: {
+        headers?: Record<string, unknown>;
+      },
+      @Body() body: Record<string, unknown>,
+      @Res() res: {
+        setHeader?: (name: string, value: string) => void;
+        appendHeader?: (name: string, value: string) => void;
+        header?: (name: string, value: string) => unknown;
+        redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
+        status?: (code: number) => { send?: (body?: unknown) => unknown };
+        send?: (body?: unknown) => unknown;
+        statusCode?: number;
+      },
+      @Query('redirect') redirect?: string,
+    ): Promise<void> {
+      const user = currentLoomUser();
+      if (!user || !this.auth.tenancyActive) {
+        sendRedirect(res, this.loom.basePath);
+        return;
+      }
+      const raw = body.companyId;
+      const companyId =
+        raw === undefined || raw === null
+          ? ''
+          : String(raw);
+      const redirectTo = resolveCompanySwitchRedirect(
+        body.redirect ?? redirect,
+        req.headers?.referer ?? req.headers?.Referer,
+        this.loom.basePath,
+      );
+      try {
+        const result = await this.auth.switchCompany(user, companyId);
+        setResponseCookies(res, result.cookies);
+        sendRedirect(res, redirectTo);
+      } catch (error) {
+        const message = encodeURIComponent(
+          error instanceof Error ? error.message : 'Could not switch company',
+        );
+        const sep = redirectTo.includes('?') ? '&' : '?';
+        sendRedirect(res, `${redirectTo}${sep}error=${message}`);
+      }
+    }
+
     @Get()
     @Header('Content-Type', 'text/html; charset=utf-8')
-    dashboard(@Query('success') success?: string, @Query('error') error?: string): string {
-      return this.views.render('dashboard', shellContext(this.loom, {
+    async dashboard(@Query('success') success?: string, @Query('error') error?: string): Promise<string> {
+      return this.views.render('dashboard', await shellContext(this.loom, {
         pageTitle: 'Dashboard',
         pageSubtitle: 'Select an application to get started.',
         flash: flashFromQuery(success, error),
@@ -339,7 +385,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         if (!meta.kanban) {
           const result = await this.loom.list(resource, query);
           const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
-          return this.views.render('list', shellContext(this.loom, {
+          return this.views.render('list', await shellContext(this.loom, {
             currentSlug: resource,
             pageTitle: meta.label,
             pageSubtitle: `${result.total} records`,
@@ -357,7 +403,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const result = await this.loom.list(resource, query);
         const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
         const columns = groupKanbanRecords(result.items, meta.kanban.groupBy);
-        return this.views.render('kanban', shellContext(this.loom, {
+        return this.views.render('kanban', await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.kanban.title ?? meta.label,
           pageSubtitle: `${result.total} records`,
@@ -397,7 +443,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const query = normalizeListQuery({ page, perPage, search, sort, direction, trashed });
         const result = await this.loom.list(resource, query);
         const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
-        return this.views.render('list', shellContext(this.loom, {
+        return this.views.render('list', await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.label,
           pageSubtitle: `${result.total} records`,
@@ -442,7 +488,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
               : 'name';
           record[titleField] = prefilledName.trim();
         }
-        const context = shellContext(this.loom, {
+        const context = await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: `Create ${meta.singularLabel}`,
           resource: meta,
@@ -580,7 +626,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           this.loom.relationOptionsForForm(meta),
           this.loom.relationLabelsForRecords(meta, [record]),
         ]);
-        const context = shellContext(this.loom, {
+        const context = await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: `Edit ${meta.singularLabel}`,
           resource: meta,
@@ -617,7 +663,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const abilities = this.loom.abilitiesFor(resource, record);
         const relationLabels = await this.loom.relationLabelsForRecords(meta, [record]);
         const pageTitle = this.loom.recordTitle(meta, record);
-        const context = shellContext(this.loom, {
+        const context = await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle,
           showEditButton: !embed && abilities.canEdit,
@@ -745,19 +791,38 @@ function listViewContext(
   };
 }
 
-function shellContext(
+async function shellContext(
   loom: LoomService,
   extra: Record<string, unknown> & {
     currentSlug?: string;
     pageTitle?: string;
     resource?: ResourceMeta;
   },
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const pageTitle = (extra.pageTitle as string | undefined) ?? loom.panelTitle;
   const menu = loom.menuContext(extra.currentSlug, pageTitle);
-  const companies = loom.companies;
-  const currentCompanyId = loom.currentCompanyId;
-  const currentCompany = companies.find((c) => c.id === currentCompanyId);
+  const rawCompanyId = loom.currentCompanyId;
+  const currentCompanyId =
+    rawCompanyId != null && String(rawCompanyId) !== ''
+      ? String(rawCompanyId)
+      : undefined;
+  const companies = (await loom.shellCompanies()).map((company) => {
+    const id = String(company.id);
+    return {
+      ...company,
+      id,
+      current: currentCompanyId != null && id === currentCompanyId,
+    };
+  });
+  const currentCompany = companies.find((c) => c.current) ?? companies.find((c) => c.id === currentCompanyId);
+  const requestPath = currentRequestContext()?.path;
+  const switchRedirect =
+    typeof requestPath === 'string' &&
+    requestPath.startsWith(loom.basePath) &&
+    !requestPath.includes('/company/switch') &&
+    !requestPath.includes('/login')
+      ? safeRedirect(requestPath, loom.basePath)
+      : loom.basePath;
   const abilities =
     extra.abilities ??
     (extra.currentSlug ? loom.abilitiesFor(extra.currentSlug) : undefined);
@@ -771,6 +836,11 @@ function shellContext(
     companies,
     currentCompanyId,
     currentCompanyName: currentCompany?.name,
+    allCompaniesSelected: loom.tenancyEnabled && !currentCompanyId,
+    tenancyEnabled: loom.tenancyEnabled,
+    canViewAllCompanies: loom.canViewAllCompanies,
+    switchCompanyPath: `${loom.basePath}/company/switch`,
+    switchRedirect,
     user: loom.user,
     userInitial: loom.userInitial(),
     authEnabled: loom.authEnabled,
@@ -794,6 +864,32 @@ function mapAuthError(error: unknown, fallbackStatus = HttpStatus.FORBIDDEN): Ht
     error instanceof Error ? error.message : 'Request failed',
     fallbackStatus,
   );
+}
+
+
+function resolveCompanySwitchRedirect(
+  explicit: unknown,
+  referer: unknown,
+  basePath: string,
+): string {
+  const fromBody = safeRedirect(explicit, '');
+  if (fromBody) return fromBody;
+  if (typeof referer === 'string' && referer.trim()) {
+    try {
+      const url = new URL(referer, 'http://localhost');
+      const path = `${url.pathname}${url.search}`;
+      if (
+        path.startsWith(basePath) &&
+        !path.includes('/company/switch') &&
+        !path.includes('/login')
+      ) {
+        return path;
+      }
+    } catch {
+      // ignore invalid referer
+    }
+  }
+  return basePath;
 }
 
 function safeRedirect(value: unknown, fallback: string): string {

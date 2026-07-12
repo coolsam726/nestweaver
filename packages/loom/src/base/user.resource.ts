@@ -43,7 +43,12 @@ export abstract class UserResourceBase extends Resource {
         EmailField.make('email').required().searchable(),
         PasswordField.make('password').required().label('Password'),
         RelationField.make('roleIds').manyToMany('roles').widget('relationTable').label('Roles').columnSpanFull(),
-        RelationField.make('companyId').manyToOne('companies').label('Company'),
+        RelationField.make('companyIds')
+          .manyToMany('companies')
+          .widget('combobox')
+          .label('Companies')
+          .columnSpanFull(),
+        RelationField.make('companyId').manyToOne('companies').label('Home company'),
         BooleanField.make('active').label('Active'),
       );
     return schema.build();
@@ -56,7 +61,8 @@ export abstract class UserResourceBase extends Resource {
         TextColumn.make('name').searchable().sortable(),
         TextColumn.make('email').searchable().sortable(),
         RelationColumn.make('roleIds').manyToMany('roles').label('Roles'),
-        RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
+        RelationColumn.make('companyIds').manyToMany('companies').label('Companies'),
+        RelationColumn.make('company.displayName').manyToOne('companies').label('Home'),
         BooleanColumn.make('active').sortable(),
         DateTimeColumn.make('createdAt').sortable(),
       )
@@ -71,7 +77,8 @@ export abstract class UserResourceBase extends Resource {
         TextColumn.make('name'),
         TextColumn.make('email'),
         RelationColumn.make('roleIds').manyToMany('roles').label('Roles'),
-        RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
+        RelationColumn.make('companyIds').manyToMany('companies').label('Companies'),
+        RelationColumn.make('company.displayName').manyToOne('companies').label('Home'),
         BooleanColumn.make('active'),
         DateTimeColumn.make('createdAt'),
       )

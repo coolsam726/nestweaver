@@ -27,7 +27,7 @@ Until Critical + High are done, treat Loom as **beta / early admin**, not a prod
 | [#10](https://github.com/coolsam726/nestweaver/issues/10) | Login rate limiting / brute-force protection |
 | [#11](https://github.com/coolsam726/nestweaver/issues/11) | CSRF protection for cookie-authenticated mutations |
 | [#12](https://github.com/coolsam726/nestweaver/issues/12) | Server-side session revocation |
-| [#13](https://github.com/coolsam726/nestweaver/issues/13) | Real tenant/company enforcement (or demote switcher) |
+| [#13](https://github.com/coolsam726/nestweaver/issues/13) | Real tenant/company enforcement (or demote switcher) — demote shipped; full tenancy via `auth.tenancy` |
 | [#14](https://github.com/coolsam726/nestweaver/issues/14) | ACL schema migrations for all ORMs |
 
 ## Wave 2 — High
@@ -95,7 +95,7 @@ Shipped in foundations PR (partial Wave 1 + quick High wins):
 
 Still open for Wave 1: _(none — Wave 1 Critical closed)_.
 
-Also shipped: [#11](https://github.com/coolsam726/nestweaver/issues/11) CSRF, [#12](https://github.com/coolsam726/nestweaver/issues/12) session revocation, [#24](https://github.com/coolsam726/nestweaver/issues/24) configurable `cookiePath`, [#13](https://github.com/coolsam726/nestweaver/issues/13) company switcher demoted to branding label, [#14](https://github.com/coolsam726/nestweaver/issues/14) ACL migrations + Drizzle fail-closed.
+Also shipped: [#11](https://github.com/coolsam726/nestweaver/issues/11) CSRF, [#12](https://github.com/coolsam726/nestweaver/issues/12) session revocation, [#24](https://github.com/coolsam726/nestweaver/issues/24) configurable `cookiePath`, [#13](https://github.com/coolsam726/nestweaver/issues/13) company switcher demoted (honesty); real tenancy shipped separately, [#14](https://github.com/coolsam726/nestweaver/issues/14) ACL migrations + Drizzle fail-closed.
 
 Wave 2 High remaining: _(none after #15 + #17)_ — also previously closed from Wave 2 early: #16, #18, #19, #20.
 

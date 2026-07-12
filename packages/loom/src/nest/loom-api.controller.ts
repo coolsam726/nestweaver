@@ -59,6 +59,63 @@ export function createLoomApiController(
       };
     }
 
+
+    @Get('companies')
+    async companies() {
+      const user = currentLoomUser();
+      if (this.auth.enabled && !user) {
+        throw new HttpException('Authentication required', HttpStatus.UNAUTHORIZED);
+      }
+      return {
+        items: await this.auth.listSwitchableCompanies(user),
+        currentCompanyId: user?.companyId ?? null,
+        tenancyEnabled: this.auth.tenancyActive,
+        canViewAllCompanies: Boolean(user && this.loom.canViewAllCompanies),
+      };
+    }
+
+    @Post('company/switch')
+    async switchCompany(
+      @Body() body: { companyId?: string | null },
+      @Res() res: {
+        setHeader?: (name: string, value: string) => void;
+        header?: (name: string, value: string) => unknown;
+        status?: (code: number) => { send?: (body?: unknown) => unknown; json?: (body?: unknown) => unknown };
+        send?: (body?: unknown) => unknown;
+        json?: (body?: unknown) => unknown;
+        statusCode?: number;
+      },
+    ): Promise<void> {
+      const user = currentLoomUser();
+      if (!user || !this.auth.tenancyActive) {
+        throw new HttpException('Company tenancy is not enabled', HttpStatus.BAD_REQUEST);
+      }
+      try {
+        const result = await this.auth.switchCompany(
+          user,
+          body.companyId === undefined || body.companyId === null
+            ? ''
+            : String(body.companyId),
+        );
+        setResponseCookies(res, result.cookies);
+        sendJson(res, 200, {
+          user: {
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
+            role: result.user.role,
+            companyId: result.user.companyId ?? null,
+          },
+        });
+      } catch (error) {
+        if (error instanceof LoomAuthorizationError) {
+          sendJson(res, 403, { message: error.message });
+          return;
+        }
+        throw error;
+      }
+    }
+
     @Get('resources')
     resources() {
       return {

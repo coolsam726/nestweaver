@@ -23,6 +23,8 @@ import { LOOM_PUBLIC_KEY } from './loom-auth.decorators.js';
 import { setResponseCookies } from './loom-auth.interceptor.js';
 
 type HttpRequest = {
+  url?: string;
+  originalUrl?: string;
   method?: string;
   headers?: Record<string, unknown>;
   cookies?: Record<string, string>;
@@ -69,7 +71,7 @@ export class LoomAuthContextInterceptor implements NestInterceptor {
 
     if (!this.auth.enabled) {
       return new Observable((subscriber) => {
-        runWithRequestContext({ requestId }, () => {
+        runWithRequestContext({ requestId, path: requestUrl(req) }, () => {
           runWithLoomAuth(null, () => {
             next.handle().subscribe({
               next: (value) => subscriber.next(value),
@@ -104,7 +106,7 @@ export class LoomAuthContextInterceptor implements NestInterceptor {
         }
         return new Observable((subscriber) => {
           runWithRequestContext(
-            { requestId, userId: user?.id },
+            { requestId, userId: user?.id, path: requestUrl(req) },
             () => {
               runWithLoomAuth(
                 user,
@@ -130,4 +132,8 @@ function isApiEnabled(options: LoomModuleOptions): boolean {
   if (api === false) return false;
   if (api && typeof api === 'object' && api.enabled === false) return false;
   return true;
+}
+
+function requestUrl(req: { originalUrl?: string; url?: string }): string {
+  return req.originalUrl ?? req.url ?? '/';
 }

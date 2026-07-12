@@ -50,7 +50,7 @@ export class LoomAuthInterceptor implements NestInterceptor {
 
     if (!this.auth.enabled) {
       return new Observable((subscriber) => {
-        runWithRequestContext({ requestId }, () => {
+        runWithRequestContext({ requestId, path: requestUrl(req) }, () => {
           next.handle().subscribe({
             next: (value) => subscriber.next(value),
             error: (err) => subscriber.error(err),
@@ -106,7 +106,7 @@ export class LoomAuthInterceptor implements NestInterceptor {
 
         return new Observable((subscriber) => {
           runWithRequestContext(
-            { requestId, userId: user?.id },
+            { requestId, userId: user?.id, path: requestUrl(req) },
             () => {
               runWithLoomAuth(
                 user,
@@ -135,6 +135,11 @@ function isHtmlMutation(req: HttpRequest): boolean {
 function requestPath(req: HttpRequest): string {
   const raw = req.originalUrl ?? req.url ?? '';
   return raw.split('?')[0] || '/';
+}
+
+function requestUrl(req: HttpRequest): string {
+  const raw = req.originalUrl ?? req.url ?? '';
+  return raw || '/';
 }
 
 function redirect(res: HttpResponse, url: string): void {

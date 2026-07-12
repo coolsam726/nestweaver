@@ -180,6 +180,13 @@ export interface ResourceMeta {
   /** Extra permissions declared on the resource (seeded into the catalog) */
   customPermissions: Array<{ name: string; label?: string }>;
   /**
+   * When true, records are scoped to the active company (`companyId` by default).
+   * Requires `auth.tenancy` enabled.
+   */
+  companyScoped?: boolean;
+  /** Override company FK field for this resource (implies company scoping). */
+  companyField?: string;
+  /**
    * Soft-delete support. When set, `delete` stamps `deletedAt` (or custom field)
    * and list excludes trashed rows unless `?trashed=1`.
    */
@@ -203,12 +210,12 @@ export interface LoomModuleOptions {
   dataSource?: unknown;
   adapter?: import('../adapters/adapter.js').LoomAdapter;
   /**
-   * Companies for shell branding display only.
-   * Loom does not enforce multi-tenant isolation; use policies / app queries
-   * for record-level company scoping.
+   * Static companies for shell branding (and fallback switcher labels).
+   * When `auth.tenancy` is enabled, the switcher prefers live rows from the
+   * companies resource; branding overrides here still merge by id.
    */
   companies?: LoomCompany[];
-  /** Display-only active company id (branding merge); not a tenant switch */
+  /** Fallback active company id when the session has none (branding merge) */
   currentCompanyId?: string;
   /** Shell chrome — profile panel (overridden by session user when auth is enabled) */
   user?: { name: string; email?: string; avatar?: string; role?: string };
