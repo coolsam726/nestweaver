@@ -9,7 +9,6 @@ import {
   buildRelationLabelMap,
   buildRelationOptionsForForm,
   relationQuickCreate,
-  relationRecordSummary,
   searchRelationOptions,
   type RelationFieldContextMap,
   type RelationLabelMap,
@@ -33,6 +32,8 @@ import {
   scopeList,
   type PolicyClass,
 } from '../core/policy.js';
+import { setRequestContextField } from '../core/request-context.js';
+import { recordIdFrom } from '../adapters/adapter.js';
 import { LoomAuthService } from './loom-auth.service.js';
 
 @Injectable()
@@ -254,7 +255,17 @@ export class LoomService {
   }
 
   async relationOptionsForForm(meta: ResourceMeta): Promise<RelationOptionsMap> {
-    return buildRelationOptionsForForm(this.adapter, this.registry, meta);
+    const user = this.authUser();
+    return buildRelationOptionsForForm(this.adapter, this.registry, meta, (resourceSlug) => {
+      if (this.authEnabled) {
+        try {
+          this.authorize(resourceSlug, 'viewAny');
+        } catch {
+          return { equals: { id: '__loom_denied__' } };
+        }
+      }
+      return scopeList(this.policyFor(resourceSlug), user, resourceSlug);
+    });
   }
 
   async relationLabelsForRecords(
@@ -281,7 +292,16 @@ export class LoomService {
     if (!field || !relation) {
       throw new Error(`Unknown relation field "${fieldName}"`);
     }
-    return searchRelationOptions(this.adapter, this.registry, relation, search, limit);
+    this.authorize(relation.resource, 'viewAny');
+    const scope = scopeList(this.policyFor(relation.resource), this.authUser(), relation.resource);
+    return searchRelationOptions(
+      this.adapter,
+      this.registry,
+      relation,
+      search,
+      limit,
+      scope,
+    );
   }
 
   async relationQuickCreate(
@@ -290,7 +310,12 @@ export class LoomService {
     name: string,
   ): Promise<RelationOption> {
     this.authorize(slug, 'create');
-    return relationQuickCreate(this.adapter, this.registry, this.meta(slug), fieldName, name);
+    const meta = this.meta(slug);
+    const field = meta.fields.find((item) => item.name === fieldName);
+    if (field?.relation?.resource) {
+      this.authorize(field.relation.resource, 'create');
+    }
+    return relationQuickCreate(this.adapter, this.registry, meta, fieldName, name);
   }
 
   async relationRecordSummary(
@@ -298,8 +323,13 @@ export class LoomService {
     id: string,
     labelField?: string,
   ): Promise<RelationOption> {
-    this.authorize(resource, 'view');
-    return relationRecordSummary(this.adapter, this.registry, resource, id, labelField);
+    const record = await this.findOne(resource, id);
+    const relatedMeta = this.meta(resource);
+    const field = labelField ?? relatedMeta.recordTitleField ?? 'name';
+    return {
+      value: recordIdFrom(record),
+      label: computeDisplayName(record, field) || String(record[field] ?? id),
+    };
   }
 
   async createRecord(slug: string, data: Record<string, unknown>) {
@@ -331,6 +361,7 @@ export class LoomService {
     slug: string,
     ability: 'viewAny' | 'view' | 'create' | 'edit' | 'delete',
   ): void {
+    setRequestContextField({ resource: slug, ability });
     if (!this.authEnabled) return;
     const user = this.authUser();
     const policy = this.policyFor(slug);
@@ -353,6 +384,7 @@ export class LoomService {
     ability: 'view' | 'edit' | 'delete',
     record: Record<string, unknown>,
   ): void {
+    setRequestContextField({ resource: slug, ability });
     if (!this.authEnabled) return;
     const user = this.authUser();
     const policy = this.policyFor(slug);

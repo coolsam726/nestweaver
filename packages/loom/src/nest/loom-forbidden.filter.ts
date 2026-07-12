@@ -1,9 +1,13 @@
 import {
   Catch,
+  Inject,
   type ArgumentsHost,
   type ExceptionFilter,
 } from '@nestjs/common';
 import { LoomAuthorizationError } from '../core/abilities.js';
+import { currentRequestContext } from '../core/request-context.js';
+import type { LoomModuleOptions } from '../core/types.js';
+import { LOOM_OPTIONS } from '../core/types.js';
 import { LoomService } from './loom.service.js';
 import { LoomViewService } from './loom-view.service.js';
 
@@ -29,6 +33,7 @@ export class LoomForbiddenExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly views: LoomViewService,
     private readonly loom: LoomService,
+    @Inject(LOOM_OPTIONS) private readonly options: LoomModuleOptions,
   ) {}
 
   catch(exception: LoomAuthorizationError, host: ArgumentsHost): void {
@@ -36,11 +41,26 @@ export class LoomForbiddenExceptionFilter implements ExceptionFilter {
     const res = http.getResponse<HttpResponse>();
     const req = http.getRequest<HttpRequest>();
     const path = String(req.originalUrl ?? req.url ?? req.path ?? '');
+    const ctx = currentRequestContext();
+    this.options.observability?.onError?.({
+      error: exception,
+      requestId: ctx?.requestId,
+      userId: ctx?.userId,
+      path,
+      resource: ctx?.resource,
+      ability: ctx?.ability,
+    });
+
     const accept = String(req.headers?.accept ?? '');
     const wantsJson =
       path.includes('/api/loom') ||
       path.includes(`/${this.loom.apiPrefix}`) ||
       accept.includes('application/json');
+
+    if (ctx?.requestId) {
+      res.setHeader?.('X-Request-Id', ctx.requestId);
+      res.header?.('X-Request-Id', ctx.requestId);
+    }
 
     if (wantsJson) {
       const body = {

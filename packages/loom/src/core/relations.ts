@@ -2,6 +2,7 @@ import { computeDisplayName, withDisplayNameFromMeta } from './display-name.js';
 import type { LoomAdapter } from '../adapters/adapter.js';
 import { recordIdFrom } from '../adapters/adapter.js';
 import type { ResourceRegistry } from './registry.js';
+import type { LoomQueryScope } from './policy.js';
 import type {
   ColumnConfig,
   FieldConfig,
@@ -173,12 +174,14 @@ export async function searchRelationOptions(
   relation: RelationConfig,
   search?: string,
   limit = RELATION_SEARCH_LIMIT,
+  scope?: LoomQueryScope,
 ): Promise<RelationOption[]> {
   const relatedMeta = registry.require(relation.resource);
   const result = await adapter.list(relatedMeta, {
     page: 1,
     perPage: Math.min(limit, RELATION_OPTIONS_LIMIT),
     search: search?.trim() || undefined,
+    scope,
   });
   return result.items.map((record) =>
     toRelationOption(record, relation.labelField, relatedMeta, relation.groupBy),
@@ -306,12 +309,14 @@ export async function buildRelationOptions(
   registry: ResourceRegistry,
   relation: RelationConfig,
   search?: string,
+  scope?: LoomQueryScope,
 ): Promise<RelationOption[]> {
   const relatedMeta = registry.require(relation.resource);
   const result = await adapter.list(relatedMeta, {
     page: 1,
     perPage: RELATION_OPTIONS_LIMIT,
     search,
+    scope,
   });
   return result.items.map((record) =>
     toRelationOption(record, relation.labelField, relatedMeta, relation.groupBy),
@@ -322,10 +327,17 @@ export async function buildRelationOptionsForForm(
   adapter: LoomAdapter,
   registry: ResourceRegistry,
   meta: ResourceMeta,
+  scopeForResource?: (resourceSlug: string) => LoomQueryScope | undefined,
 ): Promise<RelationOptionsMap> {
   const out: RelationOptionsMap = {};
   for (const field of relationFields(meta)) {
-    out[field.name] = await buildRelationOptions(adapter, registry, field.relation);
+    out[field.name] = await buildRelationOptions(
+      adapter,
+      registry,
+      field.relation,
+      undefined,
+      scopeForResource?.(field.relation.resource),
+    );
   }
   return out;
 }

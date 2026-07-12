@@ -216,6 +216,24 @@ export interface LoomModuleOptions {
     /** Route prefix without leading slash (default: `api/loom`) */
     prefix?: string;
   };
+  /**
+   * Observability hooks for admin + JSON API.
+   * Request IDs are always assigned (`X-Request-Id` inbound/outbound).
+   */
+  observability?: {
+    /**
+     * Called when Loom catches an authorization or unexpected admin/API error.
+     * Useful for Sentry / structured log pipelines.
+     */
+    onError?: (event: {
+      error: unknown;
+      requestId?: string;
+      userId?: string;
+      path?: string;
+      resource?: string;
+      ability?: string;
+    }) => void;
+  };
 }
 
 export type ResourceClass = {

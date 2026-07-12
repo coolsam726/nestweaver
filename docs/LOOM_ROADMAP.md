@@ -100,3 +100,5 @@ Also shipped: [#11](https://github.com/coolsam726/nestweaver/issues/11) CSRF, [#
 Wave 2 High remaining: _(none after #15 + #17)_ — also previously closed from Wave 2 early: #16, #18, #19, #20.
 
 Also shipped in Wave 2 PR: [#15](https://github.com/coolsam726/nestweaver/issues/15) password reset, [#17](https://github.com/coolsam726/nestweaver/issues/17) IDOR guard via `scopeList` on record access.
+
+Wave 3 (partial): [#21](https://github.com/coolsam726/nestweaver/issues/21) request IDs + `onError`, [#22](https://github.com/coolsam726/nestweaver/issues/22) relation ACL/scope, [#23](https://github.com/coolsam726/nestweaver/issues/23) email login exact lookup only. Still open: #25–#28 (#24 already closed).
