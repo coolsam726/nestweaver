@@ -9,7 +9,14 @@ import type {
   ResourceMeta,
 } from './types.js';
 
-export type RelationOption = { label: string; value: string };
+export type RelationOption = {
+  label: string;
+  value: string;
+  /** Optional group key for checkboxList grouping */
+  group?: string;
+  /** Optional short label within a group (e.g. permission ability) */
+  ability?: string;
+};
 
 /** field/column name → related id → display label */
 export type RelationLabelMap = Record<string, Record<string, string>>;
@@ -32,19 +39,29 @@ export type RelationFieldContextMap = Record<string, RelationFieldContext>;
 
 export function isMany2OneRelation(
   relation?: RelationConfig,
-): relation is RelationConfig {
+): relation is RelationConfig & { kind: 'many2one' } {
   return relation?.kind === 'many2one';
 }
 
+export function isMultiRelation(
+  relation?: RelationConfig,
+): relation is RelationConfig & { kind: 'many2many' | 'one2many' } {
+  return relation?.kind === 'many2many' || relation?.kind === 'one2many';
+}
+
+export function isRelationConfig(relation?: RelationConfig): relation is RelationConfig {
+  return Boolean(relation?.kind && relation.resource);
+}
+
 export function relationConfigForField(field: FieldConfig): RelationConfig | undefined {
-  return isMany2OneRelation(field.relation) ? field.relation : undefined;
+  return isRelationConfig(field.relation) ? field.relation : undefined;
 }
 
 export function relationConfigForColumn(
   meta: ResourceMeta,
   column: ColumnConfig,
 ): RelationConfig | undefined {
-  if (isMany2OneRelation(column.relation)) {
+  if (isRelationConfig(column.relation) && column.relation.resource) {
     return column.relation;
   }
   const field = meta.fields.find((item) => item.name === column.name);
@@ -52,14 +69,25 @@ export function relationConfigForColumn(
   return relationConfigForField(field);
 }
 
-export function many2OneFields(meta: ResourceMeta): Array<FieldConfig & { relation: RelationConfig }> {
+export function relationFields(meta: ResourceMeta): Array<FieldConfig & { relation: RelationConfig }> {
   return meta.fields.filter(
     (field): field is FieldConfig & { relation: RelationConfig } =>
       Boolean(relationConfigForField(field)),
   );
 }
 
-export function many2OneColumns(
+/** @deprecated Prefer relationFields */
+export function many2OneFields(meta: ResourceMeta): Array<FieldConfig & { relation: RelationConfig }> {
+  return relationFields(meta).filter((field) => isMany2OneRelation(field.relation));
+}
+
+export function multiRelationFields(
+  meta: ResourceMeta,
+): Array<FieldConfig & { relation: RelationConfig }> {
+  return relationFields(meta).filter((field) => isMultiRelation(field.relation));
+}
+
+export function relationColumns(
   meta: ResourceMeta,
 ): Array<{ name: string; relation: RelationConfig }> {
   const fromColumns = meta.columns
@@ -70,12 +98,19 @@ export function many2OneColumns(
     .filter((item): item is { name: string; relation: RelationConfig } => Boolean(item));
 
   const seen = new Set(fromColumns.map((item) => item.name));
-  for (const field of many2OneFields(meta)) {
+  for (const field of relationFields(meta)) {
     if (!seen.has(field.name)) {
       fromColumns.push({ name: field.name, relation: field.relation });
     }
   }
   return fromColumns;
+}
+
+/** @deprecated Prefer relationColumns */
+export function many2OneColumns(
+  meta: ResourceMeta,
+): Array<{ name: string; relation: RelationConfig }> {
+  return relationColumns(meta).filter((item) => isMany2OneRelation(item.relation));
 }
 
 export function relationForeignKey(
@@ -85,6 +120,33 @@ export function relationForeignKey(
   return relation?.foreignKey ?? name;
 }
 
+/** Normalize a stored FK or id-array into string ids. */
+export function relationIdsFromValue(value: unknown): string[] {
+  if (value === null || value === undefined || value === '') return [];
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item).trim()).filter(Boolean);
+        }
+      } catch {
+        // fall through to comma split
+      }
+    }
+    return trimmed
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [String(value)];
+}
+
 export function relationLabel(
   fieldName: string,
   record: Record<string, unknown>,
@@ -92,6 +154,11 @@ export function relationLabel(
   relation?: RelationConfig,
 ): string {
   const fk = relationForeignKey(fieldName, relation);
+  if (isMultiRelation(relation)) {
+    const ids = relationIdsFromValue(record[fk]);
+    if (ids.length === 0) return '';
+    return ids.map((id) => labels?.[fieldName]?.[id] ?? id).join(', ');
+  }
   const id = record[fk];
   if (id === null || id === undefined || id === '') {
     return '';
@@ -113,7 +180,9 @@ export async function searchRelationOptions(
     perPage: Math.min(limit, RELATION_OPTIONS_LIMIT),
     search: search?.trim() || undefined,
   });
-  return result.items.map((record) => toRelationOption(record, relation.labelField, relatedMeta));
+  return result.items.map((record) =>
+    toRelationOption(record, relation.labelField, relatedMeta, relation.groupBy),
+  );
 }
 
 export async function relationQuickCreate(
@@ -175,7 +244,7 @@ export function buildRelationFieldContexts(
   meta: ResourceMeta,
 ): RelationFieldContextMap {
   const out: RelationFieldContextMap = {};
-  for (const field of many2OneFields(meta)) {
+  for (const field of relationFields(meta)) {
     const relatedMeta = registry.require(field.relation.resource);
     out[field.name] = {
       resource: field.relation.resource,
@@ -200,11 +269,36 @@ function toRelationOption(
   record: Record<string, unknown>,
   labelField: string,
   relatedMeta: ResourceMeta,
+  groupBy?: string,
 ): RelationOption {
+  const label = formatRelationLabel(record, labelField, relatedMeta);
+  const ability =
+    record.ability !== null && record.ability !== undefined && record.ability !== ''
+      ? String(record.ability)
+      : undefined;
+  let group: string | undefined;
+  if (groupBy) {
+    const fromField = getByPath(record, groupBy);
+    if (fromField !== null && fromField !== undefined && fromField !== '') {
+      group = String(fromField);
+    } else {
+      group = deriveGroupFromPermissionName(label);
+    }
+  }
   return {
     value: recordIdFrom(record),
-    label: formatRelationLabel(record, labelField, relatedMeta),
+    label,
+    group,
+    ability,
   };
+}
+
+function deriveGroupFromPermissionName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === '*') return '*';
+  const colon = trimmed.indexOf(':');
+  if (colon <= 0) return trimmed;
+  return trimmed.slice(0, colon) || '*';
 }
 
 export async function buildRelationOptions(
@@ -219,7 +313,9 @@ export async function buildRelationOptions(
     perPage: RELATION_OPTIONS_LIMIT,
     search,
   });
-  return result.items.map((record) => toRelationOption(record, relation.labelField, relatedMeta));
+  return result.items.map((record) =>
+    toRelationOption(record, relation.labelField, relatedMeta, relation.groupBy),
+  );
 }
 
 export async function buildRelationOptionsForForm(
@@ -228,7 +324,7 @@ export async function buildRelationOptionsForForm(
   meta: ResourceMeta,
 ): Promise<RelationOptionsMap> {
   const out: RelationOptionsMap = {};
-  for (const field of many2OneFields(meta)) {
+  for (const field of relationFields(meta)) {
     out[field.name] = await buildRelationOptions(adapter, registry, field.relation);
   }
   return out;
@@ -241,7 +337,7 @@ export async function buildRelationLabelMap(
   records: Record<string, unknown>[],
 ): Promise<RelationLabelMap> {
   const out: RelationLabelMap = {};
-  const columns = many2OneColumns(meta);
+  const columns = relationColumns(meta);
   if (columns.length === 0 || records.length === 0) {
     return out;
   }
@@ -250,10 +346,7 @@ export async function buildRelationLabelMap(
     const fk = relationForeignKey(name, relation);
     const ids = [
       ...new Set(
-        records
-          .map((record) => record[fk])
-          .filter((value) => value !== null && value !== undefined && value !== '')
-          .map((value) => String(value)),
+        records.flatMap((record) => relationIdsFromValue(record[fk])),
       ),
     ];
     if (ids.length === 0) continue;

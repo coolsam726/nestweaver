@@ -380,12 +380,14 @@
   };
 
   let _dialogOnResult = null;
-  let _pendingM2oPick = null;
+  let _pendingRelationPick = null;
 
-  function applyPendingM2oPick() {
-    if (!_pendingM2oPick) return;
-    window.dispatchEvent(new CustomEvent('loom-m2o-pick', { detail: _pendingM2oPick }));
-    _pendingM2oPick = null;
+  function applyPendingRelationPick() {
+    if (!_pendingRelationPick) return;
+    const detail = _pendingRelationPick;
+    _pendingRelationPick = null;
+    const eventName = detail.mode === 'm2m' ? 'loom-m2m-pick' : 'loom-m2o-pick';
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
 
   function withEmbed(url) {
@@ -441,6 +443,16 @@
 
   function readM2oConfig(el) {
     const raw = el?.getAttribute?.('data-loom-m2o-config');
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+
+  function readM2mConfig(el) {
+    const raw = el?.getAttribute?.('data-loom-m2m-config');
     if (!raw) return {};
     try {
       return JSON.parse(raw);
@@ -639,7 +651,8 @@
           slug: this.relatedResource,
           onResult: (result) => {
             if (result?.id) {
-              _pendingM2oPick = {
+              _pendingRelationPick = {
+                mode: 'm2o',
                 field: this.name,
                 id: result.id,
                 label: result.label,
@@ -651,12 +664,515 @@
     };
   }
 
+  function createLoomM2m(cfg) {
+    return {
+      name: cfg.name,
+      relatedResource: cfg.relatedResource,
+      singularLabel: cfg.singularLabel || 'Record',
+      searchUrl: cfg.searchUrl,
+      quickCreateUrl: cfg.quickCreateUrl,
+      createUrl: cfg.createUrl,
+      detailUrlBase: cfg.detailUrlBase,
+      readonly: !!cfg.readonly,
+      required: !!cfg.required,
+
+      selected: Array.isArray(cfg.initialItems)
+        ? cfg.initialItems.map((item) => ({
+            id: String(item.id),
+            label: item.label || String(item.id),
+          }))
+        : [],
+      query: '',
+      results: [],
+      cursor: 0,
+      open: false,
+      loading: false,
+      _abort: null,
+      _initialFetched: false,
+
+      init() {
+        this._pickHandler = (event) => {
+          const detail = event.detail || {};
+          if (detail.field === this.name) {
+            this.pick({ id: detail.id, label: detail.label });
+          }
+        };
+        window.addEventListener('loom-m2m-pick', this._pickHandler);
+      },
+
+      destroy() {
+        if (this._pickHandler) {
+          window.removeEventListener('loom-m2m-pick', this._pickHandler);
+        }
+      },
+
+      get valueCsv() {
+        return this.selected.map((item) => item.id).join(',');
+      },
+
+      get selectedIds() {
+        return new Set(this.selected.map((item) => String(item.id)));
+      },
+
+      get availableResults() {
+        const selected = this.selectedIds;
+        return this.results.filter((item) => !selected.has(String(item.id)));
+      },
+
+      get exactMatch() {
+        const q = this.query.trim().toLowerCase();
+        if (!q) return null;
+        return this.availableResults.find((item) => item.label.toLowerCase() === q) || null;
+      },
+
+      get createCandidate() {
+        if (this.readonly) return false;
+        const q = this.query.trim();
+        return q.length > 0 && !this.exactMatch;
+      },
+
+      get canCreateAndEdit() {
+        return !this.readonly && !!this.createUrl;
+      },
+
+      focusInput() {
+        if (this.readonly) return;
+        this.$refs.input?.focus();
+        this.onFocus();
+      },
+
+      async fetchResults() {
+        if (this._abort) this._abort.abort();
+        const ctl = new AbortController();
+        this._abort = ctl;
+        this.loading = true;
+        try {
+          const url = `${this.searchUrl}&q=${encodeURIComponent(this.query)}`;
+          const response = await fetch(url, { signal: ctl.signal });
+          if (!response.ok) throw new Error('fetch failed');
+          const data = await response.json();
+          this.results = data.results || [];
+          this.cursor = 0;
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+            this.results = [];
+          }
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      onFocus() {
+        if (this.readonly) return;
+        this.open = true;
+        if (!this._initialFetched) {
+          this._initialFetched = true;
+          this.fetchResults();
+        }
+      },
+
+      onInput() {
+        this.open = true;
+        this.fetchResults();
+      },
+
+      close() {
+        this.open = false;
+        this.query = '';
+      },
+
+      moveCursor(delta) {
+        if (!this.open) {
+          this.open = true;
+          return;
+        }
+        const extra = this.createCandidate ? 1 : 0;
+        const max = this.availableResults.length + extra - 1;
+        if (max < 0) return;
+        this.cursor = Math.max(0, Math.min(max, this.cursor + delta));
+      },
+
+      onEnter() {
+        if (!this.open) return;
+        if (this.cursor < this.availableResults.length) {
+          this.pick(this.availableResults[this.cursor]);
+        } else if (this.createCandidate) {
+          this.createFromQuery();
+        }
+      },
+
+      onBackspace() {
+        if (this.query || this.readonly || this.selected.length === 0) return;
+        this.remove(this.selected[this.selected.length - 1].id);
+      },
+
+      pick(item) {
+        if (!item || item.id == null) return;
+        const id = String(item.id);
+        if (this.selectedIds.has(id)) return;
+        this.selected = [...this.selected, { id, label: item.label || id }];
+        this.query = '';
+        this.cursor = 0;
+        this.fetchResults();
+        this.$nextTick?.(() => this.$refs.input?.focus());
+      },
+
+      remove(id) {
+        const target = String(id);
+        this.selected = this.selected.filter((item) => String(item.id) !== target);
+      },
+
+      openRecord(item) {
+        if (!item?.id || !this.detailUrlBase) return;
+        window.LoomUI.openDialog({
+          url: `${this.detailUrlBase}/${item.id}/edit`,
+          title: item.label || 'Edit record',
+          slug: this.relatedResource,
+        });
+      },
+
+      async createFromQuery() {
+        const name = this.query.trim();
+        if (!name) return;
+        try {
+          const response = await fetch(this.quickCreateUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: this.name, name }),
+          });
+          if (response.status === 400) {
+            if (this.canCreateAndEdit) {
+              this.createAndEdit();
+              return;
+            }
+            const body = await response.json().catch(() => ({}));
+            showToast('error', {
+              title: 'Create blocked',
+              message: body.message || body.detail || 'Cannot create this record inline.',
+            });
+            return;
+          }
+          if (!response.ok) throw new Error('create failed');
+          const item = await response.json();
+          this.results = [item, ...this.results.filter((entry) => String(entry.id) !== String(item.id))];
+          this.pick(item);
+        } catch {
+          showToast('error', {
+            title: 'Error',
+            message: 'Unable to create record.',
+          });
+        }
+      },
+
+      createAndEdit() {
+        if (!this.createUrl) return;
+        this.open = false;
+        const q = (this.query || '').trim();
+        const url = q
+          ? `${this.createUrl}?name=${encodeURIComponent(q)}`
+          : this.createUrl;
+        const title = q ? `New ${this.singularLabel}` : `Create ${this.singularLabel}`;
+        window.LoomUI.openDialog({
+          url,
+          title,
+          slug: this.relatedResource,
+          onResult: (result) => {
+            if (result?.id) {
+              _pendingRelationPick = {
+                mode: 'm2m',
+                field: this.name,
+                id: result.id,
+                label: result.label,
+              };
+            }
+          },
+        });
+      },
+    };
+  }
+
+  function createLoomM2mCheckbox(cfg) {
+    const self = createLoomM2m(cfg);
+    self.filter = '';
+    self.columns = Math.min(4, Math.max(1, Number(cfg.checkboxColumns) || 1));
+    self.cascadeWildcards = cfg.cascadeWildcards !== false;
+    self.groupBy = cfg.groupBy ? String(cfg.groupBy) : '';
+    self.framed = cfg.checkboxFramed !== false;
+    self.options = Array.isArray(cfg.options)
+      ? cfg.options.map((item) => normalizeCheckboxOption(item))
+      : [];
+    const prevInit = self.init;
+    self.init = function initCheckbox() {
+      prevInit.call(this);
+      if (this.options.length === 0) {
+        this.loadAllOptions();
+      } else {
+        this.sortOptions();
+        this.mergeSelectedIntoOptions();
+        this.pruneCovered();
+      }
+    };
+    Object.defineProperty(self, 'filteredOptions', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        const q = this.filter.trim().toLowerCase();
+        if (!q) return this.options;
+        return this.options.filter((item) => {
+          const hay = `${item.label} ${item.ability || ''} ${item.group || ''}`.toLowerCase();
+          return hay.includes(q);
+        });
+      },
+    });
+    Object.defineProperty(self, 'filteredGroups', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        const items = this.filteredOptions;
+        if (!this.groupBy) {
+          return items.length
+            ? [{ key: '_all', title: 'All', items }]
+            : [];
+        }
+        const map = new Map();
+        for (const item of items) {
+          const key = item.group || deriveGroupFromLabel(item.label) || '_other';
+          if (!map.has(key)) map.set(key, []);
+          map.get(key).push(item);
+        }
+        const keys = [...map.keys()].sort((a, b) => {
+          if (a === '*') return -1;
+          if (b === '*') return 1;
+          if (a === '_other') return 1;
+          if (b === '_other') return -1;
+          return a.localeCompare(b);
+        });
+        return keys.map((key) => ({
+          key,
+          title: groupTitle(key),
+          items: sortGroupItems(map.get(key), this),
+        }));
+      },
+    });
+    self.permissionKey = function permissionKey(item) {
+      return String(item?.label || item?.id || '').trim();
+    };
+    self.itemDisplay = function itemDisplay(item) {
+      if (item?.ability) {
+        return item.ability === '*' ? 'All (*)' : item.ability;
+      }
+      const key = this.permissionKey(item);
+      if (key === '*') return 'All (*)';
+      if (key.includes(':')) {
+        const ability = key.slice(key.indexOf(':') + 1);
+        return ability === '*' ? 'All (*)' : ability || key;
+      }
+      return item?.label || key;
+    };
+    self.groupSelectedCount = function groupSelectedCount(group) {
+      if (!group?.items) return 0;
+      return group.items.filter((item) => this.isSelected(item.id)).length;
+    };
+    self.covers = function covers(wildcard, candidate) {
+      if (!wildcard || !candidate || wildcard === candidate) return false;
+      if (wildcard === '*') return true;
+      if (wildcard.endsWith(':*')) {
+        const prefix = wildcard.slice(0, -1);
+        return candidate.startsWith(prefix);
+      }
+      return false;
+    };
+    self.isCovered = function isCovered(item) {
+      if (!this.cascadeWildcards || !item) return false;
+      const key = this.permissionKey(item);
+      for (const sel of this.selected) {
+        if (String(sel.id) === String(item.id)) continue;
+        if (this.covers(this.permissionKey(sel), key)) return true;
+      }
+      return false;
+    };
+    self.coveredHint = function coveredHint(item) {
+      if (!item) return '';
+      const key = this.permissionKey(item);
+      for (const sel of this.selected) {
+        const wild = this.permissionKey(sel);
+        if (this.covers(wild, key)) {
+          return `Covered by ${wild}`;
+        }
+      }
+      return '';
+    };
+    self.pruneCovered = function pruneCovered() {
+      if (!this.cascadeWildcards) return;
+      this.selected = this.selected.filter((item) => !this.isCovered(item));
+    };
+    self.sortOptions = function sortOptions() {
+      this.options = [...this.options].sort((a, b) => {
+        const ag = a.group || deriveGroupFromLabel(a.label) || '';
+        const bg = b.group || deriveGroupFromLabel(b.label) || '';
+        if (ag === '*' && bg !== '*') return -1;
+        if (bg === '*' && ag !== '*') return 1;
+        if (ag !== bg) return ag.localeCompare(bg);
+        return compareAbility(a, b, this);
+      });
+    };
+    self.isSelected = function isSelected(id) {
+      return this.selectedIds.has(String(id));
+    };
+    self.pick = function pickCheckbox(item) {
+      if (!item || item.id == null || this.readonly) return;
+      const id = String(item.id);
+      if (this.selectedIds.has(id)) return;
+      const next = normalizeCheckboxOption(item);
+      this.selected = [...this.selected, next];
+      this.pruneCovered();
+    };
+    self.toggle = function toggle(item) {
+      if (this.readonly || !item) return;
+      if (this.isCovered(item) && !this.isSelected(item.id)) return;
+      if (this.isSelected(item.id)) {
+        this.remove(item.id);
+      } else {
+        this.pick(item);
+      }
+    };
+    self.mergeSelectedIntoOptions = function mergeSelectedIntoOptions() {
+      const seen = new Set(this.options.map((item) => String(item.id)));
+      for (const item of this.selected) {
+        if (!seen.has(String(item.id))) {
+          const enriched = normalizeCheckboxOption({
+            ...item,
+            group: item.group || deriveGroupFromLabel(item.label),
+          });
+          this.options = [enriched, ...this.options];
+        }
+      }
+    };
+    self.loadAllOptions = async function loadAllOptions() {
+      this.loading = true;
+      try {
+        const url = `${this.searchUrl}&q=&limit=250`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('fetch failed');
+        const data = await response.json();
+        this.options = (data.results || []).map((item) => normalizeCheckboxOption(item));
+        this.sortOptions();
+        this.mergeSelectedIntoOptions();
+        this.pruneCovered();
+      } catch {
+        this.options = this.selected.map((item) => normalizeCheckboxOption(item));
+      } finally {
+        this.loading = false;
+      }
+    };
+    return self;
+  }
+
+  function normalizeCheckboxOption(item) {
+    const id = String(item.id ?? item.value ?? '');
+    const label = item.label || id;
+    return {
+      id,
+      label,
+      group: item.group || deriveGroupFromLabel(label),
+      ability: item.ability || deriveAbilityFromLabel(label),
+    };
+  }
+
+  function deriveGroupFromLabel(label) {
+    const trimmed = String(label || '').trim();
+    if (!trimmed || trimmed === '*') return '*';
+    const colon = trimmed.indexOf(':');
+    if (colon <= 0) return trimmed;
+    return trimmed.slice(0, colon) || '*';
+  }
+
+  function deriveAbilityFromLabel(label) {
+    const trimmed = String(label || '').trim();
+    if (!trimmed || trimmed === '*') return '*';
+    const colon = trimmed.indexOf(':');
+    if (colon < 0) return undefined;
+    return trimmed.slice(colon + 1) || undefined;
+  }
+
+  function groupTitle(key) {
+    if (key === '*' || key === '_all') return 'Global';
+    if (key === '_other') return 'Other';
+    return String(key)
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  function compareAbility(a, b, ctx) {
+    const aa = a.ability || deriveAbilityFromLabel(a.label) || ctx.permissionKey(a);
+    const ba = b.ability || deriveAbilityFromLabel(b.label) || ctx.permissionKey(b);
+    const aRank = aa === '*' ? 0 : 1;
+    const bRank = ba === '*' ? 0 : 1;
+    if (aRank !== bRank) return aRank - bRank;
+    return String(aa).localeCompare(String(ba));
+  }
+
+  function sortGroupItems(items, ctx) {
+    return [...items].sort((a, b) => compareAbility(a, b, ctx));
+  }
+
+  function createLoomM2mTable(cfg) {
+    const self = createLoomM2m(cfg);
+    self.addOpen = false;
+    const prevInit = self.init;
+    const prevDestroy = self.destroy;
+    const prevPick = self.pick;
+    const prevCreateAndEdit = self.createAndEdit;
+    self.init = function initTable() {
+      prevInit.call(this);
+      this._tablePickHandler = (event) => {
+        const detail = event.detail || {};
+        if (detail.field === this.name) {
+          prevPick.call(this, { id: detail.id, label: detail.label });
+          this.closeAdd();
+        }
+      };
+      window.addEventListener('loom-m2m-pick', this._tablePickHandler);
+    };
+    self.destroy = function destroyTable() {
+      prevDestroy.call(this);
+      if (this._tablePickHandler) {
+        window.removeEventListener('loom-m2m-pick', this._tablePickHandler);
+      }
+    };
+    self.toggleAdd = function toggleAdd() {
+      this.addOpen = !this.addOpen;
+      if (this.addOpen) {
+        this.query = '';
+        this.fetchResults();
+        this.$nextTick?.(() => this.$refs.addInput?.focus());
+      }
+    };
+    self.closeAdd = function closeAdd() {
+      this.addOpen = false;
+      this.query = '';
+    };
+    self.pick = function pickTable(item) {
+      prevPick.call(this, item);
+      this.closeAdd();
+    };
+    self.createAndEdit = function createAndEditTable() {
+      this.closeAdd();
+      prevCreateAndEdit.call(this);
+    };
+    return self;
+  }
+
   function registerLoomAlpineComponents() {
     if (registerLoomAlpineComponents._done) return;
     registerLoomAlpineComponents._done = true;
 
     Alpine.data('loomM2oFromEl', (el) => createLoomM2o(readM2oConfig(el)));
     Alpine.data('loomM2o', (cfg) => createLoomM2o(cfg));
+    Alpine.data('loomM2mFromEl', (el) => createLoomM2m(readM2mConfig(el)));
+    Alpine.data('loomM2m', (cfg) => createLoomM2m(cfg));
+    Alpine.data('loomM2mCheckboxFromEl', (el) => createLoomM2mCheckbox(readM2mConfig(el)));
+    Alpine.data('loomM2mTableFromEl', (el) => createLoomM2mTable(readM2mConfig(el)));
 
     Alpine.data('loomDialogHost', () => ({
       open: false,
@@ -899,10 +1415,10 @@
                 if (flash) showToast(flash);
                 if (this.dialogStack.length > 0) {
                   await this.restoreDialog(this.dialogStack.pop());
-                  applyPendingM2oPick();
+                  applyPendingRelationPick();
                   return;
                 }
-                applyPendingM2oPick();
+                applyPendingRelationPick();
                 this.close();
                 return;
               }

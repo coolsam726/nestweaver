@@ -14,3 +14,7 @@ export * from './flash.js';
 export * from './layout.js';
 export * from './relations.js';
 export * from './display-name.js';
+export * from './auth.js';
+export * from './abilities.js';
+export * from './policy.js';
+export * from './rbac-store.js';

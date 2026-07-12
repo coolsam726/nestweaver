@@ -7,7 +7,7 @@ export interface GridLayoutOptions {
 
 export function resolveGridItemStyle(
   layout: GridLayoutOptions,
-  sectionColumns: GridColumns = 1,
+  sectionColumns: GridColumns = 2,
 ): string {
   const cols = Math.max(1, sectionColumns);
   const span =

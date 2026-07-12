@@ -153,9 +153,79 @@
   color-scheme: dark;
 }
 
-:where(.dark, .dark *) select,
-:where(.dark, .dark *) input[type='search'] {
+/* All native controls follow brand + light/dark tokens (including future inputs). */
+:where(html) {
   accent-color: var(--color-fg-brand);
+}
+
+:where(.dark, .dark *) {
+  accent-color: var(--color-fg-brand);
+}
+
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+input[type='color'],
+progress,
+meter {
+  accent-color: var(--color-fg-brand);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--color-fg-brand);
+  accent-color: var(--color-fg-brand);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* Soft-rounded themed checkbox (native radius is unreliable). */
+input[type='checkbox'] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1.5px solid var(--color-default);
+  border-radius: 0.3rem;
+  background-color: var(--color-neutral-primary);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.7rem;
+  transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+input[type='checkbox']:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-fg-brand) 55%, var(--color-default));
+}
+
+input[type='checkbox']:checked {
+  background-color: var(--color-fg-brand);
+  border-color: var(--color-fg-brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E");
+}
+
+input[type='checkbox']:indeterminate {
+  background-color: var(--color-fg-brand);
+  border-color: var(--color-fg-brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M3.5 8h9'/%3E%3C/svg%3E");
+}
+
+input[type='radio'] {
+  border-radius: 9999px;
+}
+
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-brand) 28%, transparent);
+}
+
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 [x-cloak] { display: none !important; }
@@ -512,6 +582,76 @@ fieldset.loom-card {
   outline: none;
 }
 
+/** Themed checkbox — use on any `input[type=checkbox]` outside toggles. */
+@utility loom-checkbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1.5px solid var(--color-default);
+  border-radius: 0.3rem;
+  background-color: var(--color-neutral-primary);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.7rem;
+  accent-color: var(--color-fg-brand);
+  color: var(--color-fg-brand);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-fg-brand) 55%, var(--color-default));
+  }
+
+  &:checked {
+    background-color: var(--color-fg-brand);
+    border-color: var(--color-fg-brand);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E");
+  }
+
+  &:indeterminate {
+    background-color: var(--color-fg-brand);
+    border-color: var(--color-fg-brand);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M3.5 8h9'/%3E%3C/svg%3E");
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-brand) 28%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+/** Themed radio — same tokens as checkbox for future multi-choice fields. */
+@utility loom-radio {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--color-fg-brand);
+  color: var(--color-fg-brand);
+  cursor: pointer;
+  vertical-align: middle;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-brand) 28%, transparent);
+    border-radius: 9999px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
 @utility loom-input {
   width: 100%;
   border-radius: 0.5rem;
@@ -575,7 +715,7 @@ select.loom-input option {
 .loom-detail-grid {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(var(--loom-form-cols, var(--loom-detail-cols, 1)), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--loom-form-cols, var(--loom-detail-cols, 2)), minmax(0, 1fr));
 }
 
 @media (max-width: 639px) {
@@ -735,8 +875,8 @@ select.loom-input option {
 }
 
 .loom-toggle__input:checked + .loom-toggle__track {
-  background: var(--color-success-strong);
-  border-color: color-mix(in srgb, var(--color-success-strong) 80%, #000);
+  background: var(--color-fg-brand);
+  border-color: color-mix(in srgb, var(--color-fg-brand) 80%, #000);
 }
 
 .loom-toggle__input:checked + .loom-toggle__track .loom-toggle__thumb {
@@ -795,6 +935,136 @@ select.loom-input option {
 
 .loom-m2o__open {
   align-self: stretch;
+}
+
+.loom-m2m {
+  width: 100%;
+}
+
+.loom-m2m__box {
+  cursor: text;
+}
+
+.loom-m2m__box.is-readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.loom-m2m__box.is-open {
+  border-color: var(--color-fg-brand, currentColor);
+}
+
+.loom-m2m__input {
+  min-height: 1.25rem;
+}
+
+.loom-m2m__dropdown {
+  min-width: 100%;
+}
+
+.loom-chip {
+  line-height: 1.25;
+}
+
+.loom-m2m-checkboxes,
+.loom-m2m-table {
+  width: 100%;
+}
+
+.loom-m2m-checkboxes__body--framed {
+  max-height: 28rem;
+  overflow: auto;
+  border: 1px solid var(--color-default);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.loom-m2m-checkboxes__body--open {
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  padding: 0;
+}
+
+.loom-m2m-checkboxes__list {
+  display: grid;
+  grid-template-columns: repeat(var(--loom-checkbox-cols, 1), minmax(0, 1fr));
+  gap: 0.125rem 0.5rem;
+}
+
+.loom-m2m-checkboxes__clusters {
+  display: grid;
+  grid-template-columns: repeat(var(--loom-checkbox-cols, 1), minmax(0, 1fr));
+  gap: 0.625rem;
+  align-items: start;
+}
+
+.loom-m2m-checkboxes__cluster {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-default);
+  border-radius: 0.5rem;
+  background: var(--color-neutral-primary);
+  overflow: hidden;
+}
+
+.loom-m2m-checkboxes__cluster-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid var(--color-default);
+  background: var(--color-surface-header, var(--color-neutral-secondary, transparent));
+}
+
+.loom-m2m-checkboxes__cluster-count {
+  font-size: 0.65rem;
+  line-height: 1.25;
+  color: var(--color-body-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.loom-m2m-checkboxes__cluster-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  padding: 0.375rem;
+}
+
+.loom-m2m-checkboxes__clusters--cols-1,
+.loom-m2m-checkboxes__list--cols-1 {
+  --loom-checkbox-cols: 1;
+}
+
+.loom-m2m-checkboxes__clusters--cols-2,
+.loom-m2m-checkboxes__list--cols-2 {
+  --loom-checkbox-cols: 2;
+}
+
+.loom-m2m-checkboxes__clusters--cols-3,
+.loom-m2m-checkboxes__list--cols-3 {
+  --loom-checkbox-cols: 3;
+}
+
+.loom-m2m-checkboxes__clusters--cols-4,
+.loom-m2m-checkboxes__list--cols-4 {
+  --loom-checkbox-cols: 4;
+}
+
+@media (max-width: 1024px) {
+  .loom-m2m-checkboxes__clusters--cols-3,
+  .loom-m2m-checkboxes__clusters--cols-4 {
+    --loom-checkbox-cols: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .loom-m2m-checkboxes__clusters,
+  .loom-m2m-checkboxes__list {
+    --loom-checkbox-cols: 1 !important;
+  }
 }
 
 .loom-list-refresh {

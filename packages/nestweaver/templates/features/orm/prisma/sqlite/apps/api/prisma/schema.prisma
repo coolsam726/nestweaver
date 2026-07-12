@@ -23,8 +23,26 @@ model User {
   name      String
   email     String   @unique
   password  String?
+  roleIds   Json     @default("[]")
   companyId Int?
   company   Company? @relation(fields: [companyId], references: [id])
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+model LoomPermission {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  resource String
+  ability  String
+  label    String?
+}
+
+model LoomRole {
+  id            Int     @id @default(autoincrement())
+  name          String
+  slug          String  @unique
+  description   String?
+  active        Boolean @default(true)
+  permissionIds Json    @default("[]")
 }

@@ -15,6 +15,8 @@ export interface ListQuery {
   search?: string;
   sort?: string;
   direction?: SortDirection;
+  /** Record-level policy scope (equality filters) */
+  scope?: import('./policy.js').LoomQueryScope;
 }
 
 export interface PaginatedResult<T = Record<string, unknown>> {
@@ -37,15 +39,41 @@ export type FieldType =
   | 'email'
   | 'password';
 
-export type RelationKind = 'many2one';
+export type RelationKind = 'many2one' | 'many2many' | 'one2many';
+
+/** Presentation widget for multi-relations (m2m / o2m). Default: `combobox`. */
+export type RelationWidget = 'combobox' | 'checkboxList' | 'relationTable';
 
 export interface RelationConfig {
   kind: RelationKind;
   resource: string;
   /** Field on the related record to display (supports dotted paths, e.g. `email` or `address.city`) */
   labelField: string;
-  /** FK on the parent record (defaults to the field/column name, or `relationKeyId` for dotted names) */
+  /**
+   * Parent field holding the FK / id array.
+   * - many2one: scalar FK (default: field name)
+   * - many2many / one2many: string[] of related ids (default: field name)
+   */
   foreignKey?: string;
+  /** Multi-relation UI widget (ignored for many2one). */
+  widget?: RelationWidget;
+  /** Column count for `checkboxList` (1–4, default 1). With `groupBy`, this is group cards per row. */
+  checkboxColumns?: 1 | 2 | 3 | 4;
+  /**
+   * When true (default for checkboxList), selecting `*` or `resource:*`
+   * disables more specific options covered by that wildcard.
+   */
+  cascadeWildcards?: boolean;
+  /**
+   * Group `checkboxList` options by a field on the related record
+   * (e.g. `resource` for permissions).
+   */
+  groupBy?: string;
+  /**
+   * When true (default), wrap the checkbox list in a bordered fixed-height scroll area.
+   * Set false for open layouts (e.g. permission clusters).
+   */
+  checkboxFramed?: boolean;
 }
 
 export type ColumnSpan = number | 'full';
@@ -137,6 +165,8 @@ export interface ResourceMeta {
   /** When false, detail route renders a readonly form instead of an infolist */
   hasExplicitDetail: boolean;
   presentation: ResourcePresentation;
+  /** Extra permissions declared on the resource (seeded into the catalog) */
+  customPermissions: Array<{ name: string; label?: string }>;
 }
 
 export interface LoomCompany {
@@ -158,13 +188,34 @@ export interface LoomModuleOptions {
   /** Shell chrome — company switcher */
   companies?: LoomCompany[];
   currentCompanyId?: string;
-  /** Shell chrome — profile panel */
-  user?: { name: string; email?: string; avatar?: string };
+  /** Shell chrome — profile panel (overridden by session user when auth is enabled) */
+  user?: { name: string; email?: string; avatar?: string; role?: string };
+  /**
+   * Enable cookie-session authentication for the admin panel and JSON API.
+   * When set, all routes except login and assets require a signed-in user.
+   */
+  auth?: import('./auth.js').LoomAuthOptions;
+  /**
+   * JSON API for the same resources + RBAC (default enabled).
+   * Served at `/api/loom` unless `prefix` is overridden.
+   * Set `false` to disable.
+   */
+  api?: boolean | {
+    enabled?: boolean;
+    /** Route prefix without leading slash (default: `api/loom`) */
+    prefix?: string;
+  };
 }
 
 export type ResourceClass = {
   new (): unknown;
   configure(): ResourceMeta;
+  canAccess?(user: import('./auth.js').LoomAuthUser): boolean;
+  canViewAny?(user: import('./auth.js').LoomAuthUser): boolean;
+  canView?(user: import('./auth.js').LoomAuthUser, record?: Record<string, unknown>): boolean;
+  canCreate?(user: import('./auth.js').LoomAuthUser): boolean;
+  canEdit?(user: import('./auth.js').LoomAuthUser, record?: Record<string, unknown>): boolean;
+  canDelete?(user: import('./auth.js').LoomAuthUser, record?: Record<string, unknown>): boolean;
 };
 
 export const LOOM_OPTIONS = Symbol('LOOM_OPTIONS');

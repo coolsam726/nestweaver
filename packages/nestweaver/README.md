@@ -17,3 +17,29 @@ node packages/nestweaver/dist/cli.js my-app
 ```ts
 import { runCreate, collectOptions, scaffoldProject } from 'nestweaver';
 ```
+
+## Admin panel (Loom)
+
+When you enable the admin panel during prompts, Nestweaver scaffolds a full [Loom](../loom/README.md) setup:
+
+- `apps/api/src/admin/loom-admin.module.ts` — `LoomModule.forRootAsync` with ORM inject + auth
+- Resources: Company, User, Role, Permission (extending `@nestweaver/loom/base`)
+- ACL models matched to the selected ORM:
+  - **TypeORM** — `LoomRole` / `LoomPermission` entities registered in `DatabaseModule`
+  - **Prisma** — `LoomRole` / `LoomPermission` in `schema.prisma` (`Json` id-lists on MySQL/SQLite)
+  - **Drizzle** — `loomRoles` / `loomPermissions` tables (id-lists as JSON text)
+  - **Mongoose** — Company/User schemas; Role/Permission registered at runtime by Loom
+
+### Env vars (scaffolded)
+
+| Variable | Purpose |
+|----------|---------|
+| `LOOM_AUTH_SECRET` | Enables cookie auth + RBAC |
+| `LOOM_ADMIN_EMAIL` | Seed admin email (default `admin@example.com`) |
+| `LOOM_ADMIN_PASSWORD` | Seed admin password (default `password`) |
+| `LOOM_ADMIN_NAME` | Seed admin display name |
+| `LOOM_BRAND_*` | Optional branding overrides (see Loom README) |
+
+After `docker compose up` / `pnpm dev`, open `/admin` and sign in with the seed credentials.
+
+Full feature docs: [`@nestweaver/loom` README](../loom/README.md).

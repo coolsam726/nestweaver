@@ -22,6 +22,9 @@ export class User {
   @Column({ nullable: true })
   password?: string;
 
+  @Column('simple-array', { nullable: true })
+  roleIds?: string[];
+
   @Column({ nullable: true })
   companyId?: number;
 

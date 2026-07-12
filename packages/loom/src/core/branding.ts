@@ -132,6 +132,7 @@ export function buildBrandingCss(branding: LoomBranding): string {
   --color-loom-accent-100: color-mix(in srgb, ${accent} 22%, white);
   --color-loom-accent-600: ${accent};
   --color-loom-accent-700: color-mix(in srgb, ${accent} 78%, black);
+  accent-color: var(--color-fg-brand);
 }
 
 .dark {
@@ -149,10 +150,12 @@ export function buildBrandingCss(branding: LoomBranding): string {
   --color-surface-inset: color-mix(in srgb, var(--color-gray-800) 55%, var(--color-gray-900));
   --color-surface-row-hover: color-mix(in srgb, var(--color-gray-700) 35%, var(--color-gray-900));
   --color-badge-neutral: color-mix(in srgb, var(--color-gray-700) 45%, var(--color-gray-900));
+  accent-color: var(--color-fg-brand);
 }
 
 body {
   font-family: var(--loom-font-family);
+  accent-color: var(--color-fg-brand);
 }
 `;
 }

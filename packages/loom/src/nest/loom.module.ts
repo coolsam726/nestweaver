@@ -1,12 +1,20 @@
 import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
 import type { InjectionToken } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { createNoopAdapter, createLoomAdapter, type LoomAdapter } from '../adapters/adapter.js';
 import { ResourceRegistry } from '../core/registry.js';
+import { createLoomRbacStore, createNoopRbacStore, LOOM_RBAC } from '../core/rbac-store.js';
 import type { LoomModuleOptions } from '../core/types.js';
 import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
 import { createLoomController } from './loom.controller.js';
+import { createLoomApiController } from './loom-api.controller.js';
 import { LoomService } from './loom.service.js';
 import { LoomViewService } from './loom-view.service.js';
+import { LoomAuthService } from './loom-auth.service.js';
+import { LoomAuthInterceptor } from './loom-auth.interceptor.js';
+import { LoomAuthContextInterceptor } from './loom-auth-context.interceptor.js';
+import { LoomAbilityGuard, LoomAuthGuard } from './loom-auth.guard.js';
+import { LoomForbiddenExceptionFilter } from './loom-forbidden.filter.js';
 
 function resolveAdapter(options: LoomModuleOptions): LoomAdapter {
   if (options.adapter) {
@@ -21,19 +29,47 @@ function resolveAdapter(options: LoomModuleOptions): LoomAdapter {
   return createLoomAdapter(options.orm, options.dataSource);
 }
 
+function resolveRbac(options: LoomModuleOptions) {
+  if (!options.orm || options.dataSource === undefined) {
+    return createNoopRbacStore();
+  }
+  return createLoomRbacStore(options.orm, options.dataSource);
+}
+
+function resolveApiPrefix(options: LoomModuleOptions): string | null {
+  const api = options.api;
+  if (api === false) return null;
+  if (api && typeof api === 'object' && api.enabled === false) return null;
+  if (api && typeof api === 'object' && api.prefix) {
+    return api.prefix.replace(/^\//, '').replace(/\/$/, '') || 'api/loom';
+  }
+  return 'api/loom';
+}
+
 function buildLoomModule(
   options: LoomModuleOptions,
   asyncProviders: Provider[],
 ): DynamicModule {
   const basePath = options.basePath ?? '/admin';
   const LoomController = createLoomController(basePath);
+  const controllers: Type<unknown>[] = [LoomController as Type<unknown>];
+
+  const apiPrefix = resolveApiPrefix(options);
+  if (apiPrefix) {
+    controllers.push(createLoomApiController(apiPrefix) as Type<unknown>);
+  }
 
   return {
     module: LoomModule,
-    controllers: [LoomController as Type<unknown>],
+    controllers,
     providers: [
       ...asyncProviders,
       { provide: LOOM_ADAPTER, useFactory: resolveAdapter, inject: [LOOM_OPTIONS] },
+      {
+        provide: LOOM_RBAC,
+        useFactory: resolveRbac,
+        inject: [LOOM_OPTIONS],
+      },
       {
         provide: LOOM_REGISTRY,
         useFactory: (moduleOptions: LoomModuleOptions) =>
@@ -42,8 +78,26 @@ function buildLoomModule(
       },
       LoomService,
       LoomViewService,
+      LoomAuthService,
+      LoomAuthInterceptor,
+      LoomAuthContextInterceptor,
+      LoomAuthGuard,
+      LoomAbilityGuard,
+      {
+        provide: APP_FILTER,
+        useClass: LoomForbiddenExceptionFilter,
+      },
     ],
-    exports: [LoomService, LOOM_ADAPTER, LOOM_REGISTRY],
+    exports: [
+      LoomService,
+      LoomAuthService,
+      LoomAuthGuard,
+      LoomAbilityGuard,
+      LoomAuthContextInterceptor,
+      LOOM_ADAPTER,
+      LOOM_REGISTRY,
+      LOOM_RBAC,
+    ],
   };
 }
 

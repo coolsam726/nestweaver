@@ -47,6 +47,15 @@ export function generateEnvExample(options: ScaffoldOptions): string {
     lines.push('');
   }
 
+  if (options.admin) {
+    lines.push('# Loom admin auth (required for /admin login)');
+    lines.push('LOOM_AUTH_SECRET=dev-loom-auth-secret-change-me');
+    lines.push('LOOM_ADMIN_EMAIL=admin@example.com');
+    lines.push('LOOM_ADMIN_PASSWORD=password');
+    lines.push('LOOM_ADMIN_NAME=Admin');
+    lines.push('');
+  }
+
   lines.push('# Docker Compose overrides DATABASE_URL / REDIS_HOST for the app service.');
 
   return lines.join('\n');

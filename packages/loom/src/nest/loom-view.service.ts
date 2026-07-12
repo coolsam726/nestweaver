@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import Handlebars from 'handlebars';
 import type { LoomFlash } from '../core/flash.js';
 import type { ColumnConfig, FieldConfig, ResourceMeta } from '../core/types.js';
-import { relationLabel, type RelationLabelMap } from '../core/relations.js';
+import { relationIdsFromValue, relationLabel, type RelationLabelMap } from '../core/relations.js';
 import { resolveGridItemStyle } from '../core/layout.js';
 import { listResourcePath, type ListViewQuery } from '../core/list-query.js';
 import { loomViewsDir } from './paths.js';
@@ -68,14 +68,26 @@ export class LoomViewService {
   }
 
   private registerHelpers(): void {
-    Handlebars.registerHelper('or', (a: unknown, b: unknown) => a || b);
+    Handlebars.registerHelper('or', (...args: unknown[]) => {
+      const values = args.slice(0, -1);
+      for (const value of values) {
+        if (value) return value;
+      }
+      return values[values.length - 1];
+    });
     Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
     Handlebars.registerHelper('neq', (a: unknown, b: unknown) => a !== b);
     Handlebars.registerHelper('gt', (a: unknown, b: unknown) => Number(a) > Number(b));
     Handlebars.registerHelper('lt', (a: unknown, b: unknown) => Number(a) < Number(b));
     Handlebars.registerHelper('inc', (value: unknown) => Number(value) + 1);
     Handlebars.registerHelper('dec', (value: unknown) => Number(value) - 1);
-    Handlebars.registerHelper('and', (a: unknown, b: unknown) => Boolean(a && b));
+    Handlebars.registerHelper('and', (...args: unknown[]) => {
+      const values = args.slice(0, -1);
+      for (const value of values) {
+        if (!value) return value;
+      }
+      return values[values.length - 1];
+    });
     Handlebars.registerHelper('not', (value: unknown) => !value);
     Handlebars.registerHelper('json', (value: unknown) => JSON.stringify(value));
     Handlebars.registerHelper('jsonAttr', (value: unknown) => {
@@ -86,7 +98,7 @@ export class LoomViewService {
         .replace(/</g, '&lt;');
     });
     Handlebars.registerHelper('gridItemStyle', (item: { columnSpan?: number | 'full'; columnStart?: number }, sectionColumns: number) => {
-      return resolveGridItemStyle(item ?? {}, (sectionColumns || 1) as 1 | 2 | 3 | 4);
+      return resolveGridItemStyle(item ?? {}, (sectionColumns || 2) as 1 | 2 | 3 | 4);
     });
     Handlebars.registerHelper('m2oConfig', (root: Record<string, unknown>, field: FieldConfig) => {
       const resource = root.resource as ResourceMeta | undefined;
@@ -116,6 +128,51 @@ export class LoomViewService {
         detailUrlBase: `${basePath}/${relation?.resource ?? ''}`,
         initialId: id,
         initialLabel: label,
+        readonly: Boolean(root.readonly) || Boolean(field.disabled),
+        required: Boolean(field.required),
+      };
+    });
+    Handlebars.registerHelper('m2mConfig', (root: Record<string, unknown>, field: FieldConfig) => {
+      const resource = root.resource as ResourceMeta | undefined;
+      const slug = resource?.slug ?? '';
+      const basePath = String(root.basePath ?? '');
+      const fieldName = field.name;
+      const relation = field.relation;
+      const contexts = root.relationFieldContexts as Record<string, { singularLabel?: string }> | undefined;
+      const labels = root.relationLabels as RelationLabelMap | undefined;
+      const options = root.relationOptions as Record<string, Array<{ value: string; label: string }>> | undefined;
+      const record = (root.record ?? {}) as Record<string, unknown>;
+      const ids = relationIdsFromValue(record[fieldName]);
+      const optionMap = new Map(
+        (options?.[fieldName] ?? []).map((item) => [String(item.value), item.label]),
+      );
+      const initialItems = ids.map((id) => ({
+        id,
+        label: labels?.[fieldName]?.[id] ?? optionMap.get(id) ?? id,
+      }));
+      const allOptions = (options?.[fieldName] ?? []).map((item) => ({
+        id: String(item.value),
+        label: item.label,
+        group: (item as { group?: string }).group,
+        ability: (item as { ability?: string }).ability,
+      }));
+      return {
+        name: fieldName,
+        relatedResource: relation?.resource ?? '',
+        singularLabel: contexts?.[fieldName]?.singularLabel ?? relation?.resource ?? 'Record',
+        searchUrl: `${basePath}/${slug}/relation-search?field=${encodeURIComponent(fieldName)}`,
+        quickCreateUrl: `${basePath}/${slug}/relation-quick-create`,
+        createUrl: `${basePath}/${relation?.resource ?? ''}/create`,
+        detailUrlBase: `${basePath}/${relation?.resource ?? ''}`,
+        initialItems,
+        options: allOptions,
+        widget: relation?.widget ?? 'combobox',
+        checkboxColumns: relation?.checkboxColumns ?? 1,
+        cascadeWildcards:
+          relation?.cascadeWildcards ??
+          (relation?.widget === 'checkboxList' ? true : false),
+        groupBy: relation?.groupBy ?? '',
+        checkboxFramed: relation?.checkboxFramed !== false,
         readonly: Boolean(root.readonly) || Boolean(field.disabled),
         required: Boolean(field.required),
       };

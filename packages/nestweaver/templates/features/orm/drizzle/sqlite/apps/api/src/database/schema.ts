@@ -15,7 +15,25 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   password: text('password'),
+  roleIds: text('role_ids'),
   companyId: integer('company_id').references(() => companies.id),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('created_at').notNull(),
+});
+
+export const loomPermissions = sqliteTable('loom_permissions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  resource: text('resource').notNull(),
+  ability: text('ability').notNull(),
+  label: text('label'),
+});
+
+export const loomRoles = sqliteTable('loom_roles', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  description: text('description'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  permissionIds: text('permission_ids'),
 });

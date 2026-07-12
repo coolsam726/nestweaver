@@ -56,7 +56,15 @@
       {{/each}}
     </select>
   {{else if (eq type 'relation')}}
-    {{> field-m2o}}
+    {{#if (eq relation.kind 'many2one')}}
+      {{> field-m2o}}
+    {{else if (eq relation.widget 'checkboxList')}}
+      {{> field-m2m-checkbox}}
+    {{else if (eq relation.widget 'relationTable')}}
+      {{> field-m2m-table}}
+    {{else}}
+      {{> field-m2m}}
+    {{/if}}
   {{else}}
     <div class="loom-input-group{{#if prefix}} has-prefix{{/if}}{{#if suffix}} has-suffix{{/if}}">
       {{#if prefix}}<span class="loom-input-group__affix">{{prefix}}</span>{{/if}}

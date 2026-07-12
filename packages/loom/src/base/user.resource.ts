@@ -18,7 +18,8 @@ import {
 
 /**
  * Extendable base resource for users.
- * Override schemas in a subclass to add roles, permissions, etc.
+ * Assign roles via `roleIds` (many-to-many chips select).
+ * Access follows RBAC permissions (`users:viewAny`, etc.).
  */
 export abstract class UserResourceBase extends Resource {
   static override slug = 'users';
@@ -41,6 +42,7 @@ export abstract class UserResourceBase extends Resource {
         TextField.make('name').required().searchable(),
         EmailField.make('email').required().searchable(),
         PasswordField.make('password').required().label('Password'),
+        RelationField.make('roleIds').manyToMany('roles').widget('relationTable').label('Roles').columnSpanFull(),
         RelationField.make('companyId').manyToOne('companies').label('Company'),
         BooleanField.make('active').label('Active'),
       );
@@ -53,6 +55,7 @@ export abstract class UserResourceBase extends Resource {
         IdColumn.make(),
         TextColumn.make('name').searchable().sortable(),
         TextColumn.make('email').searchable().sortable(),
+        RelationColumn.make('roleIds').manyToMany('roles').label('Roles'),
         RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
         BooleanColumn.make('active').sortable(),
         DateTimeColumn.make('createdAt').sortable(),
@@ -67,6 +70,7 @@ export abstract class UserResourceBase extends Resource {
       .entries(
         TextColumn.make('name'),
         TextColumn.make('email'),
+        RelationColumn.make('roleIds').manyToMany('roles').label('Roles'),
         RelationColumn.make('company.displayName').manyToOne('companies').label('Company'),
         BooleanColumn.make('active'),
         DateTimeColumn.make('createdAt'),

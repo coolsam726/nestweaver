@@ -34,7 +34,9 @@
                 {{/if}}
               </th>
             {{/each}}
-            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-body-subtle">Actions</th>
+            {{#if (or (not @root.abilities) @root.abilities.canView @root.abilities.canEdit @root.abilities.canDelete)}}
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-body-subtle">Actions</th>
+            {{/if}}
           </tr>
         </thead>
         <tbody>
@@ -52,33 +54,49 @@
                       <button
                         type="button"
                         class="text-heading hover:text-fg-brand hover:underline text-left"
-                        @click="$dispatch('loom-open-dialog', { url: '{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}', title: 'View record', slug: '{{../../resource.slug}}' })"
+                        {{#if (or (not @root.abilities) @root.abilities.canView)}}
+                          @click="$dispatch('loom-open-dialog', { url: '{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}', title: 'View record', slug: '{{../../resource.slug}}' })"
+                        {{else}}
+                          disabled
+                        {{/if}}
                       >{{cellValue .. this}}</button>
                     {{else}}
-                      <a href="{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}" class="text-heading hover:text-fg-brand hover:underline">{{cellValue .. this}}</a>
+                      {{#if (or (not @root.abilities) @root.abilities.canView)}}
+                        <a href="{{../../basePath}}/{{../../resource.slug}}/{{../this.id}}" class="text-heading hover:text-fg-brand hover:underline">{{cellValue .. this}}</a>
+                      {{else}}
+                        <span class="text-heading">{{cellValue .. this}}</span>
+                      {{/if}}
                     {{/if}}
                   {{/if}}
                 </td>
               {{/each}}
+              {{#if (or (not @root.abilities) @root.abilities.canView @root.abilities.canEdit @root.abilities.canDelete)}}
               <td class="px-4 py-3 text-right">
                 <div class="inline-flex items-center gap-1 text-xs">
-                  {{#if (eq ../resource.presentation.detail 'modal')}}
-                    <button type="button" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}', title: 'View record', slug: '{{../resource.slug}}' })">View</button>
-                  {{else}}
-                    <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover">View</a>
+                  {{#if (or (not @root.abilities) @root.abilities.canView)}}
+                    {{#if (eq ../resource.presentation.detail 'modal')}}
+                      <button type="button" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}', title: 'View record', slug: '{{../resource.slug}}' })">View</button>
+                    {{else}}
+                      <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}" class="px-2 py-1 rounded-md text-fg-brand hover:bg-surface-hover">View</a>
+                    {{/if}}
                   {{/if}}
-                  {{#if (eq ../resource.presentation.form 'modal')}}
-                    <button type="button" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit', title: 'Edit record', slug: '{{../resource.slug}}' })">Edit</button>
-                  {{else}}
-                    <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover">Edit</a>
+                  {{#if (or (not @root.abilities) @root.abilities.canEdit)}}
+                    {{#if (eq ../resource.presentation.form 'modal')}}
+                      <button type="button" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover" @click="$dispatch('loom-open-dialog', { url: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit', title: 'Edit record', slug: '{{../resource.slug}}' })">Edit</button>
+                    {{else}}
+                      <a href="{{../basePath}}/{{../resource.slug}}/{{this.id}}/edit" class="px-2 py-1 rounded-md text-body hover:bg-surface-hover">Edit</a>
+                    {{/if}}
                   {{/if}}
-                  <button
-                    type="button"
-                    class="px-2 py-1 rounded-md text-fg-danger hover:bg-danger-soft"
-                    @click="$dispatch('loom-open-confirm', { title: 'Delete record?', message: 'This action cannot be undone.', action: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/delete' })"
-                  >Delete</button>
+                  {{#if (or (not @root.abilities) @root.abilities.canDelete)}}
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md text-fg-danger hover:bg-danger-soft"
+                      @click="$dispatch('loom-open-confirm', { title: 'Delete record?', message: 'This action cannot be undone.', action: '{{../basePath}}/{{../resource.slug}}/{{this.id}}/delete' })"
+                    >Delete</button>
+                  {{/if}}
                 </div>
               </td>
+              {{/if}}
             </tr>
           {{else}}
             <tr>

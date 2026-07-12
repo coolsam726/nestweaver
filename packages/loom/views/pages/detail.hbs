@@ -5,9 +5,9 @@
         <h3 class="text-sm font-semibold text-heading">{{title}}</h3>
         {{#if description}}<p class="mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
       </div>
-      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 1}}">
+      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 2}}">
         {{#each entries}}
-          <div class="loom-detail-cell" style="{{gridItemStyle this ../columns}}">
+          <div class="loom-detail-cell" style="{{gridItemStyle this (or ../columns 2)}}">
             <dt class="loom-field__label">{{label}}</dt>
             <dd class="loom-field__value mt-1">
               {{#if (eq format 'boolean')}}
@@ -24,11 +24,13 @@
     </section>
   {{/each}}
   <div class="flex justify-end gap-2 pt-1">
+    {{#if (or (not abilities) abilities.canEdit)}}
     <button
       type="button"
       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-md bg-fg-brand hover:opacity-90 transition"
       @click="window.LoomUI.openDialog({ url: '{{basePath}}/{{resource.slug}}/{{id}}/edit', title: 'Edit {{resource.singularLabel}}', slug: '{{resource.slug}}', replace: true })"
     >Edit</button>
+    {{/if}}
   </div>
 {{else}}
 <div class="mx-auto max-w-5xl space-y-6">
@@ -38,9 +40,9 @@
         <h2 class="font-semibold text-heading">{{title}}</h2>
         {{#if description}}<p class="mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
       </div>
-      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 1}}">
+      <dl class="loom-detail-grid" style="--loom-detail-cols: {{or columns 2}}">
         {{#each entries}}
-          <div class="loom-detail-cell px-6 py-4 border-t border-card-border sm:border-t-0 sm:border-r sm:border-card-border last:border-r-0" style="{{gridItemStyle this ../columns}}">
+          <div class="loom-detail-cell px-6 py-4 border-t border-card-border sm:border-t-0 sm:border-r sm:border-card-border last:border-r-0" style="{{gridItemStyle this (or ../columns 2)}}">
             <dt class="loom-field__label">{{label}}</dt>
             <dd class="loom-field__value mt-1">
               {{#if (eq format 'boolean')}}
