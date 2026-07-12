@@ -145,9 +145,9 @@ export class LoomAuthService implements OnModuleInit {
     try {
       const emailField = this.options.auth.emailField ?? 'email';
       const meta = this.userMeta();
-      const record =
-        (await this.adapter.findFirst(meta, { [emailField]: normalized })) ??
-        (await this.findUserByEmailFallback(normalized));
+      const record = await this.adapter.findFirst(meta, {
+        [emailField]: normalized,
+      });
 
       if (record) {
         const user = await this.hydrateAuthUser(record);
@@ -287,9 +287,9 @@ export class LoomAuthService implements OnModuleInit {
     const emailField = auth.emailField ?? 'email';
     const passwordField = auth.passwordField ?? 'password';
     const meta = this.userMeta();
-    const record =
-      (await this.adapter.findFirst(meta, { [emailField]: normalizedEmail })) ??
-      (await this.findUserByEmailFallback(normalizedEmail));
+    const record = await this.adapter.findFirst(meta, {
+      [emailField]: normalizedEmail,
+    });
     if (!record) {
       this.loginLimiter?.recordFailure(rateKey);
       return null;
@@ -590,9 +590,7 @@ export class LoomAuthService implements OnModuleInit {
       const email = seed.email.trim().toLowerCase();
       const roleSlug = seed.role ?? 'admin';
 
-      const existing =
-        (await this.adapter.findFirst(meta, { [emailField]: email })) ??
-        (await this.findUserByEmailFallback(email));
+      const existing = await this.adapter.findFirst(meta, { [emailField]: email });
       if (existing) {
         await this.rbac.assignRoleToUser(recordIdFrom(existing), roleSlug);
         return;
@@ -618,23 +616,5 @@ export class LoomAuthService implements OnModuleInit {
   private userMeta() {
     const slug = this.options.auth?.userResource ?? 'users';
     return this.registry.require(slug);
-  }
-
-  private async findUserByEmailFallback(
-    email: string,
-  ): Promise<Record<string, unknown> | null> {
-    if (!this.options.auth) return null;
-    const emailField = this.options.auth.emailField ?? 'email';
-    const meta = this.userMeta();
-    const result = await this.adapter.list(meta, {
-      page: 1,
-      perPage: 50,
-      search: email,
-    });
-    return (
-      result.items.find(
-        (item) => String(item[emailField] ?? '').toLowerCase() === email.toLowerCase(),
-      ) ?? null
-    );
   }
 }

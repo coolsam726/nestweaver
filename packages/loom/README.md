@@ -152,6 +152,7 @@ Inject tokens by ORM:
 | `auth` | `LoomAuthOptions` | — | Cookie sessions + RBAC when `secret` is set |
 | `allowAnonymousAdmin` | `boolean` | `false` | Opt out of production fail-closed (not recommended) |
 | `api` | `boolean \| { enabled?, prefix? }` | enabled | JSON API at `/api/loom` |
+| `observability` | `{ onError? }` | — | Request IDs always set; optional error hook |
 | `companies` | `LoomCompany[]` | — | Branding lookup only — **no tenant switcher**, no tenancy enforcement |
 | `currentCompanyId` | `string` | — | Display/branding merge only (static topbar label) |
 | `user` | `{ name, email?, avatar?, role? }` | — | Shell profile when auth is off |
@@ -538,6 +539,20 @@ auth: {
 
 Without a mailer, non-production logs the reset URL; the UI always shows a generic success message (no email enumeration).
 
+Login looks up users with an exact `findFirst` on the configured email field only (no list-scan fallback). Ensure the email column is unique/indexed.
+
+### Observability
+
+Every admin and JSON API response includes `X-Request-Id` (echoes inbound header or generates a UUID). Authorization failures call `observability.onError` when configured:
+
+```typescript
+observability: {
+  onError: ({ error, requestId, userId, path, resource, ability }) => {
+    logger.warn({ err: error, requestId, userId, path, resource, ability }, 'loom.forbidden');
+  },
+},
+```
+
 ### `seedAdmin`
 
 ```typescript
@@ -709,6 +724,7 @@ export class OrderResource extends Resource {
 
 - `scopeList` is applied to list queries (`ListQuery.scope`).
 - The same `scopeList` equality filters are enforced on **show / edit / delete** (and the JSON API equivalents) so knowing an ID cannot bypass list scope (IDOR guard). Return `undefined` from `scopeList` for unrestricted users (e.g. admins).
+- Relation search / form option loads authorize the **related** resource `viewAny` and apply that resource's `scopeList`.
 - Create can stamp `ownerField` with the current user id.
 - Prefer still overriding `view` / `edit` / `delete` with `ownedBy` when you need custom record rules beyond equality filters.
 - API-only domains: register via `auth.policies: { orders: OrderPolicy }`.

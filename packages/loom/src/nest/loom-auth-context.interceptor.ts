@@ -12,6 +12,10 @@ import { Reflector } from '@nestjs/core';
 import { Observable, from, switchMap } from 'rxjs';
 import { runWithLoomAuth, type LoomAuthUser } from '../core/auth.js';
 import { LoomCsrfError } from '../core/csrf.js';
+import {
+  resolveOrCreateRequestId,
+  runWithRequestContext,
+} from '../core/request-context.js';
 import type { LoomModuleOptions } from '../core/types.js';
 import { LOOM_OPTIONS } from '../core/types.js';
 import { LoomAuthService } from './loom-auth.service.js';
@@ -52,6 +56,12 @@ export class LoomAuthContextInterceptor implements NestInterceptor {
     const http = context.switchToHttp();
     const req = http.getRequest<HttpRequest>();
     const res = http.getResponse<HttpResponse>();
+    const requestId = resolveOrCreateRequestId(req.headers);
+    res.setHeader?.('X-Request-Id', requestId);
+    if (typeof res.header === 'function') {
+      res.header('X-Request-Id', requestId);
+    }
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(LOOM_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -59,11 +69,13 @@ export class LoomAuthContextInterceptor implements NestInterceptor {
 
     if (!this.auth.enabled) {
       return new Observable((subscriber) => {
-        runWithLoomAuth(null, () => {
-          next.handle().subscribe({
-            next: (value) => subscriber.next(value),
-            error: (err) => subscriber.error(err),
-            complete: () => subscriber.complete(),
+        runWithRequestContext({ requestId }, () => {
+          runWithLoomAuth(null, () => {
+            next.handle().subscribe({
+              next: (value) => subscriber.next(value),
+              error: (err) => subscriber.error(err),
+              complete: () => subscriber.complete(),
+            });
           });
         });
       });
@@ -91,16 +103,21 @@ export class LoomAuthContextInterceptor implements NestInterceptor {
           throw new UnauthorizedException('Authentication required');
         }
         return new Observable((subscriber) => {
-          runWithLoomAuth(
-            user,
+          runWithRequestContext(
+            { requestId, userId: user?.id },
             () => {
-              next.handle().subscribe({
-                next: (value) => subscriber.next(value),
-                error: (err) => subscriber.error(err),
-                complete: () => subscriber.complete(),
-              });
+              runWithLoomAuth(
+                user,
+                () => {
+                  next.handle().subscribe({
+                    next: (value) => subscriber.next(value),
+                    error: (err) => subscriber.error(err),
+                    complete: () => subscriber.complete(),
+                  });
+                },
+                csrf.token,
+              );
             },
-            csrf.token,
           );
         });
       }),

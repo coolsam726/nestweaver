@@ -10,6 +10,10 @@ import {
   type LoomAuthUser,
 } from '../core/auth.js';
 import { LoomCsrfError } from '../core/csrf.js';
+import {
+  resolveOrCreateRequestId,
+  runWithRequestContext,
+} from '../core/request-context.js';
 import { LoomAuthService } from './loom-auth.service.js';
 
 type HttpRequest = {
@@ -37,13 +41,25 @@ export class LoomAuthInterceptor implements NestInterceptor {
   constructor(private readonly auth: LoomAuthService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    if (!this.auth.enabled) {
-      return next.handle();
-    }
-
     const http = context.switchToHttp();
     const req = http.getRequest<HttpRequest>();
     const res = http.getResponse<HttpResponse>();
+    const requestId = resolveOrCreateRequestId(req.headers);
+    res.setHeader?.('X-Request-Id', requestId);
+    res.header?.('X-Request-Id', requestId);
+
+    if (!this.auth.enabled) {
+      return new Observable((subscriber) => {
+        runWithRequestContext({ requestId }, () => {
+          next.handle().subscribe({
+            next: (value) => subscriber.next(value),
+            error: (err) => subscriber.error(err),
+            complete: () => subscriber.complete(),
+          });
+        });
+      });
+    }
+
     const pathname = requestPath(req);
 
     return from(this.auth.resolveUserFromRequest(req)).pipe(
@@ -89,16 +105,21 @@ export class LoomAuthInterceptor implements NestInterceptor {
         }
 
         return new Observable((subscriber) => {
-          runWithLoomAuth(
-            user,
+          runWithRequestContext(
+            { requestId, userId: user?.id },
             () => {
-              next.handle().subscribe({
-                next: (value) => subscriber.next(value),
-                error: (err) => subscriber.error(err),
-                complete: () => subscriber.complete(),
-              });
+              runWithLoomAuth(
+                user,
+                () => {
+                  next.handle().subscribe({
+                    next: (value) => subscriber.next(value),
+                    error: (err) => subscriber.error(err),
+                    complete: () => subscriber.complete(),
+                  });
+                },
+                csrf.token,
+              );
             },
-            csrf.token,
           );
         });
       }),
