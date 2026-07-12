@@ -108,6 +108,8 @@ Users then run `npm create nestweaver@latest`.
 
 Enabling the admin panel during scaffold wires Loom with ORM-matched Role/Permission models and seed auth. See the [Loom README](packages/loom/README.md) for the full feature guide.
 
+**Loom 1.0 roadmap:** [docs/LOOM_ROADMAP.md](docs/LOOM_ROADMAP.md) · [milestone](https://github.com/coolsam726/nestweaver/milestone/1)
+
 ## License
 
 MIT
