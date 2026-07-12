@@ -914,6 +914,13 @@ pnpm --filter @nestweaver/loom build
 pnpm --filter @nestweaver/loom dev:css   # watch Tailwind
 ```
 
+## Roadmap
+
+Loom is currently **0.x / beta**. Production-readiness work is tracked in:
+
+- Milestone: [Loom 1.0 — production stable](https://github.com/coolsam726/nestweaver/milestone/1)
+- Plan: [`docs/LOOM_ROADMAP.md`](../../docs/LOOM_ROADMAP.md)
+
 ---
 
 ## License
