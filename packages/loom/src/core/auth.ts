@@ -33,7 +33,13 @@ export interface LoomAuthUser {
   roles?: string[];
   /** Flattened permission names from all roles, e.g. `users:viewAny`, `*` */
   permissions?: string[];
+  /**
+   * Active company for the request (session override or home company).
+   * Used for tenancy scoping when `auth.tenancy` is enabled.
+   */
   companyId?: string;
+  /** Home company from the user record (before session override) */
+  homeCompanyId?: string;
   avatar?: string;
   active?: boolean;
 }
@@ -121,6 +127,12 @@ export interface LoomAuthOptions {
       user: LoomAuthUser;
     }) => void | Promise<void>;
   };
+  /**
+   * Company multi-tenancy. When enabled, session stores active `companyId`,
+   * resources with `companyScoped` / `companyField` are filtered + stamped,
+   * and the topbar company switcher is interactive.
+   */
+  tenancy?: false | import('./tenancy.js').LoomTenancyConfig;
 }
 
 export interface LoomSessionPayload {
@@ -128,6 +140,8 @@ export interface LoomSessionPayload {
   exp: number;
   /** Session version — must match the user's current version */
   sv?: number;
+  /** Active company id for multi-tenancy */
+  companyId?: string;
 }
 
 export interface LoomAuthStore {
@@ -318,6 +332,8 @@ export function toAuthUser(
     roles: Array.isArray(record.roles) ? record.roles.map(String) : undefined,
     permissions,
     companyId: record[companyIdField] != null ? String(record[companyIdField]) : undefined,
+    homeCompanyId:
+      record[companyIdField] != null ? String(record[companyIdField]) : undefined,
     avatar: typeof record.avatar === 'string' ? record.avatar : undefined,
     active: true,
   };

@@ -81,6 +81,13 @@ export abstract class Resource {
   static recordTitleField = 'name';
   /** Optional record-level policy (instance checks + list scope) */
   static policy?: PolicyClass;
+  /**
+   * Scope this resource to the active company when `auth.tenancy` is enabled.
+   * Uses `companyId` unless `companyField` is set.
+   */
+  static companyScoped?: boolean;
+  /** Company FK field (implies company scoping when tenancy is on). */
+  static companyField?: string;
 
   /** Filament-style form schema */
   static form(_schema: FormSchemaBuilder): FormSchema {
@@ -195,6 +202,8 @@ export abstract class Resource {
       hasExplicitDetail,
       presentation,
       customPermissions: normalizeCustomPermissions(this.slug, this.permissions()),
+      companyScoped: this.companyScoped,
+      companyField: this.companyField,
     };
   }
 

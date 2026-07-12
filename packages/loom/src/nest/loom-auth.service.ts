@@ -13,7 +13,19 @@ import {
   type LoomAuthOptions,
   type LoomAuthUser,
 } from '../core/auth.js';
-import { LOOM_ABILITIES } from '../core/abilities.js';
+import {
+  isAdmin,
+  LoomAuthorizationError,
+  LOOM_ABILITIES,
+} from '../core/abilities.js';
+import {
+  LOOM_ALL_COMPANIES,
+  membershipCompanyIds,
+  tenancyCompanyResource,
+  tenancyEnabled,
+  type LoomTenancyConfig,
+} from '../core/tenancy.js';
+import type { LoomCompany } from '../core/types.js';
 import {
   buildCsrfCookie,
   createCsrfToken,
@@ -244,12 +256,120 @@ export class LoomAuthService implements OnModuleInit {
     const currentSv = this.readSessionVersion(record, session.sub);
     const tokenSv = session.sv ?? 0;
     if (tokenSv !== currentSv) return null;
-    return this.hydrateAuthUser(record);
+    return this.hydrateAuthUser(record, session.companyId);
   }
 
   async findUserById(id: string): Promise<LoomAuthUser | null> {
     const record = await this.findUserRecordById(id);
     return record ? this.hydrateAuthUser(record) : null;
+  }
+
+  get tenancy(): LoomTenancyConfig | undefined {
+    const tenancy = this.options.auth?.tenancy;
+    return tenancyEnabled(tenancy) ? tenancy : undefined;
+  }
+
+  get tenancyActive(): boolean {
+    return Boolean(this.tenancy);
+  }
+
+  /**
+   * Companies the user may switch into (for the topbar + API).
+   * Admins see all companies from the companies resource (or options.companies).
+   */
+  async listSwitchableCompanies(
+    user: LoomAuthUser | null | undefined,
+  ): Promise<LoomCompany[]> {
+    const brandingById = new Map(
+      (this.options.companies ?? []).map((c) => [c.id, c] as const),
+    );
+    const mergeBranding = (id: string, name: string): LoomCompany => {
+      const fromOpts = brandingById.get(id);
+      return {
+        id,
+        name: fromOpts?.name ?? name,
+        branding: fromOpts?.branding,
+      };
+    };
+
+    if (!this.tenancy || !user) {
+      return this.options.companies ?? [];
+    }
+
+    const config = this.tenancy;
+    const labelField = config.companyLabelField ?? 'name';
+    const companySlug = tenancyCompanyResource(config);
+
+    let rows: Record<string, unknown>[] = [];
+    try {
+      const meta = this.registry.require(companySlug);
+      const page = await this.adapter.list(meta, { page: 1, perPage: 500 });
+      rows = page.items ?? [];
+    } catch {
+      return this.options.companies ?? [];
+    }
+
+    const mapped = rows.map((row) => {
+      const id = String(row.id ?? row._id ?? '');
+      const name = String(row[labelField] ?? row.name ?? id);
+      return mergeBranding(id, name);
+    }).filter((c) => c.id);
+
+    if (isAdmin(user)) return mapped;
+
+    const userRecord = (await this.findUserRecordById(user.id)) ?? {};
+    const allowed = new Set(
+      membershipCompanyIds(userRecord, user.homeCompanyId, config.membershipField),
+    );
+    return mapped.filter((c) => allowed.has(c.id));
+  }
+
+  /**
+   * Switch active company in the session cookie. Pass empty string for admin "all".
+   */
+  async switchCompany(
+    user: LoomAuthUser,
+    companyId: string | null,
+  ): Promise<{ user: LoomAuthUser; cookies: string[] }> {
+    if (!this.options.auth || !this.tenancy) {
+      throw new Error('Company tenancy is not enabled');
+    }
+
+    const record = await this.findUserRecordById(user.id);
+    if (!record) throw new Error('User not found');
+
+    const normalized =
+      companyId == null || companyId === LOOM_ALL_COMPANIES
+        ? LOOM_ALL_COMPANIES
+        : String(companyId);
+
+    if (normalized === LOOM_ALL_COMPANIES) {
+      if (!isAdmin(user)) {
+        throw new LoomAuthorizationError('Only admins can view all companies');
+      }
+    } else if (isAdmin(user)) {
+      try {
+        const meta = this.registry.require(tenancyCompanyResource(this.tenancy));
+        await this.adapter.findOne(meta, normalized);
+      } catch {
+        throw new LoomAuthorizationError('Unknown company');
+      }
+    } else {
+      const allowed = membershipCompanyIds(
+        record,
+        user.homeCompanyId,
+        this.tenancy.membershipField,
+      );
+      if (!allowed.includes(normalized)) {
+        throw new LoomAuthorizationError('You cannot switch to that company');
+      }
+    }
+
+    const sv = this.readSessionVersion(record, user.id);
+    const cookies = this.buildSessionCookies(user.id, sv, normalized);
+    const hydrated = await this.hydrateAuthUser(record, normalized);
+    if (!hydrated) throw new Error('Failed to hydrate user');
+    return { user: hydrated, cookies };
   }
 
   private async findUserRecordById(
@@ -324,8 +444,16 @@ export class LoomAuthService implements OnModuleInit {
 
     const maxAgeMs = auth.maxAgeMs ?? 7 * 24 * 60 * 60 * 1000;
     const sv = this.readSessionVersion(record, user.id);
+    const sessionCompanyId = this.tenancy
+      ? (user.companyId ?? LOOM_ALL_COMPANIES)
+      : undefined;
     const token = signSession(
-      { sub: user.id, exp: Date.now() + maxAgeMs, sv },
+      {
+        sub: user.id,
+        exp: Date.now() + maxAgeMs,
+        sv,
+        ...(sessionCompanyId !== undefined ? { companyId: sessionCompanyId } : {}),
+      },
       auth.secret,
     );
     const cookies = [buildSessionCookie(auth, token)];
@@ -447,8 +575,33 @@ export class LoomAuthService implements OnModuleInit {
     return Math.max(dbVersion, fromMemory);
   }
 
+  private buildSessionCookies(
+    userId: string,
+    sv: number,
+    companyId?: string,
+  ): string[] {
+    const auth = this.options.auth;
+    if (!auth) return [];
+    const maxAgeMs = auth.maxAgeMs ?? 7 * 24 * 60 * 60 * 1000;
+    const token = signSession(
+      {
+        sub: userId,
+        exp: Date.now() + maxAgeMs,
+        sv,
+        ...(companyId !== undefined ? { companyId } : {}),
+      },
+      auth.secret,
+    );
+    const cookies = [buildSessionCookie(auth, token)];
+    if (isCsrfEnabled(auth)) {
+      cookies.push(this.issueCsrfCookie());
+    }
+    return cookies;
+  }
+
   private async hydrateAuthUser(
     record: Record<string, unknown>,
+    sessionCompanyId?: string,
   ): Promise<LoomAuthUser | null> {
     if (!this.options.auth) return null;
     const base = toAuthUser(record, this.options.auth);
@@ -484,7 +637,46 @@ export class LoomAuthService implements OnModuleInit {
       }
     }
 
+    this.applyTenancyCompany(base, record, sessionCompanyId);
     return base;
+  }
+
+  private applyTenancyCompany(
+    user: LoomAuthUser,
+    record: Record<string, unknown>,
+    sessionCompanyId?: string,
+  ): void {
+    if (!this.tenancy) return;
+
+    const allowed = membershipCompanyIds(
+      record,
+      user.homeCompanyId,
+      this.tenancy.membershipField,
+    );
+
+    if (isAdmin(user)) {
+      if (sessionCompanyId === LOOM_ALL_COMPANIES) {
+        user.companyId = undefined;
+        return;
+      }
+      if (sessionCompanyId) {
+        user.companyId = sessionCompanyId;
+        return;
+      }
+      // Legacy session without companyId — prefer home, else all
+      user.companyId = user.homeCompanyId;
+      return;
+    }
+
+    const candidate =
+      sessionCompanyId && sessionCompanyId !== LOOM_ALL_COMPANIES
+        ? sessionCompanyId
+        : user.homeCompanyId;
+    if (candidate && allowed.includes(candidate)) {
+      user.companyId = candidate;
+      return;
+    }
+    user.companyId = user.homeCompanyId ?? allowed[0];
   }
 
   private async syncPermissionsAndRoles(): Promise<void> {

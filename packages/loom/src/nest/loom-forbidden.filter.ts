@@ -36,7 +36,7 @@ export class LoomForbiddenExceptionFilter implements ExceptionFilter {
     @Inject(LOOM_OPTIONS) private readonly options: LoomModuleOptions,
   ) {}
 
-  catch(exception: LoomAuthorizationError, host: ArgumentsHost): void {
+  async catch(exception: LoomAuthorizationError, host: ArgumentsHost): Promise<void> {
     const http = host.switchToHttp();
     const res = http.getResponse<HttpResponse>();
     const req = http.getRequest<HttpRequest>();
@@ -98,8 +98,11 @@ export class LoomForbiddenExceptionFilter implements ExceptionFilter {
         basePath: this.loom.basePath,
         branding: this.loom.branding,
         navGroups: this.loom.navigationGroups(),
-        companies: this.loom.companies,
+        companies: await this.loom.shellCompanies(),
         currentCompanyId: this.loom.currentCompanyId,
+        tenancyEnabled: this.loom.tenancyEnabled,
+        canViewAllCompanies: this.loom.canViewAllCompanies,
+        switchCompanyPath: `${this.loom.basePath}/company/switch`,
         user: this.loom.user,
         userInitial: this.loom.userInitial(),
         authEnabled: this.loom.authEnabled,

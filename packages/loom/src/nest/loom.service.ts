@@ -15,7 +15,7 @@ import {
   type RelationOption,
   type RelationOptionsMap,
 } from '../core/relations.js';
-import type { ListQuery, ResourceMeta, LoomModuleOptions } from '../core/types.js';
+import type { ListQuery, ResourceMeta, LoomModuleOptions, LoomCompany } from '../core/types.js';
 import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
 import {
   currentCsrfToken,
@@ -26,12 +26,20 @@ import {
 import {
   LoomAuthorizationError,
   assertCan,
+  isAdmin,
 } from '../core/abilities.js';
 import {
   assertPolicy,
   scopeList,
   type PolicyClass,
 } from '../core/policy.js';
+import {
+  companyScopeForUser,
+  mergeQueryScopes,
+  recordMatchesCompany,
+  resourceCompanyField,
+  tenancyEnabled,
+} from '../core/tenancy.js';
 import { setRequestContextField } from '../core/request-context.js';
 import { recordIdFrom } from '../adapters/adapter.js';
 import { LoomAuthService } from './loom-auth.service.js';
@@ -148,7 +156,7 @@ export class LoomService {
     const policy = this.policyFor(slug);
     const scoped = {
       ...query,
-      scope: scopeList(policy, user, slug) ?? query.scope,
+      scope: this.mergedScope(slug, user, query.scope, policy),
     };
     return this.adapter.list(this.meta(slug), scoped);
   }
@@ -195,12 +203,27 @@ export class LoomService {
     );
   }
 
-  get companies() {
+  get tenancyEnabled(): boolean {
+    return this.authService.tenancyActive;
+  }
+
+  /** Sync fallback — prefer `shellCompanies()` when rendering the shell. */
+  get companies(): LoomCompany[] {
     return this.options.companies ?? [];
   }
 
-  get currentCompanyId() {
+  async shellCompanies(): Promise<LoomCompany[]> {
+    if (!this.tenancyEnabled) return this.companies;
+    return this.authService.listSwitchableCompanies(this.authUser());
+  }
+
+  get currentCompanyId(): string | undefined {
     return this.authUser()?.companyId ?? this.options.currentCompanyId;
+  }
+
+  get canViewAllCompanies(): boolean {
+    const user = this.authUser();
+    return Boolean(this.tenancyEnabled && user && isAdmin(user));
   }
 
   get user() {
@@ -264,7 +287,12 @@ export class LoomService {
           return { equals: { id: '__loom_denied__' } };
         }
       }
-      return scopeList(this.policyFor(resourceSlug), user, resourceSlug);
+      return this.mergedScope(
+        resourceSlug,
+        user,
+        undefined,
+        this.policyFor(resourceSlug),
+      );
     });
   }
 
@@ -293,7 +321,12 @@ export class LoomService {
       throw new Error(`Unknown relation field "${fieldName}"`);
     }
     this.authorize(relation.resource, 'viewAny');
-    const scope = scopeList(this.policyFor(relation.resource), this.authUser(), relation.resource);
+    const scope = this.mergedScope(
+      relation.resource,
+      this.authUser(),
+      undefined,
+      this.policyFor(relation.resource),
+    );
     return searchRelationOptions(
       this.adapter,
       this.registry,
@@ -341,6 +374,7 @@ export class LoomService {
     if (ownerField && user && writable[ownerField] == null) {
       writable[ownerField] = user.id;
     }
+    this.stampCompany(slug, writable, user);
     return this.adapter.create(this.meta(slug), writable);
   }
 
@@ -387,6 +421,7 @@ export class LoomService {
     setRequestContextField({ resource: slug, ability });
     if (!this.authEnabled) return;
     const user = this.authUser();
+    this.assertCompanyAccess(slug, user, record);
     const policy = this.policyFor(slug);
     if (policy) {
       assertPolicy(policy, ability, user, slug, record);
@@ -405,6 +440,54 @@ export class LoomService {
       ability,
       method ? (u) => Boolean(method(u, record)) : undefined,
     );
+  }
+
+
+  private mergedScope(
+    slug: string,
+    user: LoomAuthUser | null | undefined,
+    queryScope: import('../core/policy.js').LoomQueryScope | undefined,
+    policy: PolicyClass | undefined,
+  ) {
+    const policyScope = scopeList(policy, user, slug);
+    const companyField = this.companyFieldFor(slug);
+    const companyScope = companyField
+      ? companyScopeForUser(user, companyField)
+      : undefined;
+    return mergeQueryScopes(queryScope, policyScope, companyScope);
+  }
+
+  private companyFieldFor(slug: string): string | null {
+    if (!tenancyEnabled(this.options.auth?.tenancy)) return null;
+    return resourceCompanyField(this.meta(slug), this.authService.tenancy);
+  }
+
+  private assertCompanyAccess(
+    slug: string,
+    user: LoomAuthUser | null | undefined,
+    record: Record<string, unknown>,
+  ): void {
+    const companyField = this.companyFieldFor(slug);
+    if (!companyField) return;
+    if (
+      !recordMatchesCompany(record, companyField, user?.companyId, user)
+    ) {
+      throw new LoomAuthorizationError(
+        `You are not allowed to access this ${slug} record`,
+      );
+    }
+  }
+
+  private stampCompany(
+    slug: string,
+    writable: Record<string, unknown>,
+    user: LoomAuthUser | null,
+  ): void {
+    const companyField = this.companyFieldFor(slug);
+    if (!companyField || !user?.companyId) return;
+    if (!isAdmin(user) || writable[companyField] == null) {
+      writable[companyField] = user.companyId;
+    }
   }
 
   private async pickWritable(
