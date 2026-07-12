@@ -168,8 +168,21 @@ export function resolveSortField(
   fallback = 'id',
 ): string {
   const field = query.sort?.trim();
-  if (field) return field;
-  return meta.defaultSort?.field ?? fallback;
+  if (!field) {
+    return meta.defaultSort?.field ?? fallback;
+  }
+  const allowed = new Set(
+    meta.columns.filter((column) => column.sortable).map((column) => column.name),
+  );
+  if (meta.defaultSort?.field) {
+    allowed.add(meta.defaultSort.field);
+  }
+  allowed.add('id');
+  allowed.add('createdAt');
+  if (!allowed.has(field)) {
+    return meta.defaultSort?.field ?? fallback;
+  }
+  return field;
 }
 
 export function resolveSortDirection(

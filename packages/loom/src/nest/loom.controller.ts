@@ -9,6 +9,7 @@ import {
   Post,
   Query,
   Redirect,
+  Req,
   Res,
   UseInterceptors,
 } from '@nestjs/common';
@@ -21,12 +22,14 @@ import { buildBrandingCss } from '../core/branding.js';
 import type { ResourceMeta, SortDirection } from '../core/types.js';
 import { flashFromQuery } from '../core/flash.js';
 import { LoomAuthorizationError } from '../core/abilities.js';
+import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { loomAdminCssPath, loomUiJsPath } from './paths.js';
 import { LoomService } from './loom.service.js';
 import { LoomViewService } from './loom-view.service.js';
 import { LoomAuthService } from './loom-auth.service.js';
 import { LoomAuthInterceptor, setResponseCookie } from './loom-auth.interceptor.js';
 import { RelationQuickCreateBlockedError } from '../core/relations.js';
+import { clientIpFromRequest } from './request-ip.js';
 
 export function createLoomController(basePath = '/admin'): new (...args: never[]) => object {
   const route = basePath.replace(/^\//, '') || 'admin';
@@ -86,6 +89,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
 
     @Post('login')
     async login(
+      @Req() req: { ip?: string; headers?: Record<string, unknown>; socket?: { remoteAddress?: string } },
       @Body() body: { email?: string; password?: string; redirect?: string },
       @Res() res: {
         setHeader?: (name: string, value: string) => void;
@@ -102,14 +106,28 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
       const email = String(body.email ?? '').trim();
       const password = String(body.password ?? '');
       const redirectTo = safeRedirect(body.redirect, this.loom.basePath);
-      const result = await this.auth.authenticate(email, password);
-      if (!result) {
-        const message = encodeURIComponent('Invalid email or password');
-        sendRedirect(res, `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`);
-        return;
+      try {
+        const result = await this.auth.authenticate(email, password, {
+          ip: clientIpFromRequest(req),
+        });
+        if (!result) {
+          const message = encodeURIComponent('Invalid email or password');
+          sendRedirect(res, `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`);
+          return;
+        }
+        setResponseCookie(res, result.cookie);
+        sendRedirect(res, redirectTo);
+      } catch (error) {
+        if (error instanceof LoginRateLimitError) {
+          const message = encodeURIComponent(error.message);
+          sendRedirect(
+            res,
+            `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`,
+          );
+          return;
+        }
+        throw error;
       }
-      setResponseCookie(res, result.cookie);
-      sendRedirect(res, redirectTo);
     }
 
     @Post('logout')

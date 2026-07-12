@@ -1,5 +1,8 @@
 import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { LoginRateLimitConfig } from './login-rate-limit.js';
+
+export type { LoginRateLimitConfig } from './login-rate-limit.js';
 
 function scryptAsync(
   password: string,
@@ -73,6 +76,16 @@ export interface LoomAuthOptions {
   policies?: Record<string, import('./policy.js').PolicyClass>;
   /** Skip automatic permission/role sync */
   skipRbacSync?: boolean;
+  /**
+   * Login brute-force protection. Default: 10 failures / 15 minutes per IP+email.
+   * Set `false` to disable (not recommended).
+   */
+  loginRateLimit?: false | LoginRateLimitConfig;
+  /**
+   * Allow verifying legacy plaintext password columns.
+   * Default: true outside production, false in production.
+   */
+  allowPlaintextPasswords?: boolean;
 }
 
 export interface LoomSessionPayload {
@@ -109,11 +122,18 @@ export async function hashPassword(password: string): Promise<string> {
   return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt}$${derived.toString('base64url')}`;
 }
 
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  stored: string,
+  options?: { allowPlaintext?: boolean },
+): Promise<boolean> {
   if (!stored) return false;
 
   // Legacy/plaintext bootstrap (upgrade on next successful login)
   if (!stored.startsWith('scrypt$')) {
+    const allowPlaintext =
+      options?.allowPlaintext ?? process.env.NODE_ENV !== 'production';
+    if (!allowPlaintext) return false;
     const a = Buffer.from(password);
     const b = Buffer.from(stored);
     if (a.length !== b.length) return false;

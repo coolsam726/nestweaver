@@ -11,10 +11,12 @@ import {
   Post,
   Put,
   Query,
+  Req,
   Res,
   UseInterceptors,
 } from '@nestjs/common';
 import { LoomAuthorizationError } from '../core/abilities.js';
+import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { normalizeListQuery } from '../core/list-query.js';
 import type { SortDirection } from '../core/types.js';
 import { LoomPublic } from './loom-auth.decorators.js';
@@ -22,6 +24,7 @@ import { LoomAuthContextInterceptor } from './loom-auth-context.interceptor.js';
 import { setResponseCookie } from './loom-auth.interceptor.js';
 import { LoomAuthService } from './loom-auth.service.js';
 import { LoomService } from './loom.service.js';
+import { clientIpFromRequest } from './request-ip.js';
 
 export function createLoomApiController(
   prefix = 'api/loom',
@@ -71,6 +74,7 @@ export function createLoomApiController(
     @LoomPublic()
     @Post('login')
     async login(
+      @Req() req: { ip?: string; headers?: Record<string, unknown>; socket?: { remoteAddress?: string } },
       @Body() body: { email?: string; password?: string },
       @Res() res: {
         setHeader?: (name: string, value: string) => void;
@@ -84,24 +88,36 @@ export function createLoomApiController(
       if (!this.auth.enabled) {
         throw new HttpException('Authentication is not configured', HttpStatus.NOT_FOUND);
       }
-      const result = await this.auth.authenticate(
-        String(body.email ?? ''),
-        String(body.password ?? ''),
-      );
-      if (!result) {
-        sendJson(res, 401, { message: 'Invalid email or password' });
-        return;
+      try {
+        const result = await this.auth.authenticate(
+          String(body.email ?? ''),
+          String(body.password ?? ''),
+          { ip: clientIpFromRequest(req) },
+        );
+        if (!result) {
+          sendJson(res, 401, { message: 'Invalid email or password' });
+          return;
+        }
+        setResponseCookie(res, result.cookie);
+        sendJson(res, 200, {
+          user: {
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
+            role: result.user.role,
+            companyId: result.user.companyId,
+          },
+        });
+      } catch (error) {
+        if (error instanceof LoginRateLimitError) {
+          sendJson(res, 429, {
+            message: error.message,
+            retryAfterSec: error.retryAfterSec,
+          });
+          return;
+        }
+        throw error;
       }
-      setResponseCookie(res, result.cookie);
-      sendJson(res, 200, {
-        user: {
-          id: result.user.id,
-          name: result.user.name,
-          email: result.user.email,
-          role: result.user.role,
-          companyId: result.user.companyId,
-        },
-      });
     }
 
     @LoomPublic()

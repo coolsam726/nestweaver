@@ -150,9 +150,10 @@ Inject tokens by ORM:
 | `adapter` | `LoomAdapter` | auto | Custom adapter (skips ORM factory) |
 | `resources` | `ResourceClass[]` | `[]` | Registered resources |
 | `auth` | `LoomAuthOptions` | — | Cookie sessions + RBAC when `secret` is set |
+| `allowAnonymousAdmin` | `boolean` | `false` | Opt out of production fail-closed (not recommended) |
 | `api` | `boolean \| { enabled?, prefix? }` | enabled | JSON API at `/api/loom` |
-| `companies` | `LoomCompany[]` | — | Company switcher in the shell |
-| `currentCompanyId` | `string` | — | Active company (session may override) |
+| `companies` | `LoomCompany[]` | — | Branding display only — switcher is **not interactive** and does **not** enforce tenancy |
+| `currentCompanyId` | `string` | — | Display/branding merge only |
 | `user` | `{ name, email?, avatar?, role? }` | — | Shell profile when auth is off |
 
 Adapter resolution order: custom `adapter` → noop (no resources) → `createLoomAdapter(orm, dataSource)`.
@@ -453,23 +454,32 @@ Built-ins: `CreateAction`, `ViewAction`, `EditAction`, `DeleteAction`.
 static override headerActions() {
   return [
     CreateAction.make(),
+    // Custom header links are supported; built-in export/bulk UIs are not shipped yet.
     Action.make('export')
       .label('Export')
       .color('gray')
       .header()
-      .url('/admin/deals/export'),
+      .url('/admin/deals/export'), // your own route
   ];
-}
-
-static override recordActions() {
-  return [ViewAction.make(), EditAction.make(), DeleteAction.make()];
 }
 ```
 
 Modifiers: `label`, `color('primary'|'accent'|'danger'|'gray')`, `icon`, `url`, `confirm`, `header()` / `row()` / `bulk()`, `link()`.
 
+`bulk()` marks placement only — **there is no bulk-selection UI yet** (roadmap).
+
 List actions are gated by the current user’s abilities (`@root.abilities` in templates).
 
+### Not available yet
+
+| Feature | Status |
+|---------|--------|
+| File / media fields | Not implemented |
+| Soft deletes / restore | Not implemented |
+| Audit log | Not implemented |
+| Bulk action bar | Action API only |
+| Interactive company/tenant switcher | Display chrome only — use [policies](#policies) for scoping |
+| CSRF tokens / session revocation | Roadmap (Wave 1) |
 ---
 
 ## Authentication
@@ -497,6 +507,10 @@ Auth is enabled when `auth.secret` is set.
 | `extraPermissions` | `[]` | Permissions with no Resource |
 | `policies` | `{}` | API-only domain policies by slug |
 | `skipRbacSync` | `false` | Skip permission/role catalog sync |
+| `loginRateLimit` | `{ maxAttempts: 10, windowMs: 15m }` | Set `false` to disable |
+| `allowPlaintextPasswords` | `true` in dev / `false` in prod | Legacy plaintext column verify |
+
+**Production:** registering resources without `auth.secret` throws unless `allowAnonymousAdmin: true`.
 
 ### `seedAdmin`
 
@@ -712,7 +726,7 @@ All paths are under `basePath` (default `/admin`).
 
 - Sidebar + mobile drawer
 - Topbar secondary sections
-- Company switcher (`companies` option)
+- Company list in the topbar (**display/branding only** — not a working tenant switcher)
 - User profile + logout
 - Dark mode toggle (`localStorage` key `loom-theme`)
 - Breadcrumbs, page heading, themed checkboxes, access-denied page
@@ -911,8 +925,16 @@ Plus ORM-specific ACL models:
 ```bash
 pnpm --filter @nestweaver/loom build:css
 pnpm --filter @nestweaver/loom build
+pnpm --filter @nestweaver/loom test
 pnpm --filter @nestweaver/loom dev:css   # watch Tailwind
 ```
+
+## Roadmap
+
+Loom is currently **0.x / beta**. Production-readiness work is tracked in:
+
+- Milestone: [Loom 1.0 — production stable](https://github.com/coolsam726/nestweaver/milestone/1)
+- Plan: [`docs/LOOM_ROADMAP.md`](../../docs/LOOM_ROADMAP.md)
 
 ---
 
