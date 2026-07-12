@@ -1,6 +1,7 @@
 import type { LoomAuthUser } from './auth.js';
 import { isAdmin } from './abilities.js';
 import type { LoomQueryScope } from './policy.js';
+import { relationIdsFromValue } from './relations.js';
 import type { ResourceMeta } from './types.js';
 
 export type LoomTenancyConfig = {
@@ -11,10 +12,10 @@ export type LoomTenancyConfig = {
   /** Resource slug for the companies catalog (default `companies`) */
   companyResource?: string;
   /**
-   * Optional user field holding allowed company ids (array / JSON / comma list).
-   * When unset, non-admins may only use their home `companyIdField` value.
+   * User field holding allowed company ids for the switcher (default `companyIds`).
+   * Set `false` to allow only the home `companyId` (no membership list).
    */
-  membershipField?: string;
+  membershipField?: string | false;
   /** Label field on company records for the switcher (default `name`) */
   companyLabelField?: string;
 };
@@ -32,6 +33,17 @@ export function tenancyCompanyField(config?: LoomTenancyConfig): string {
 
 export function tenancyCompanyResource(config?: LoomTenancyConfig): string {
   return config?.companyResource ?? 'companies';
+}
+
+/** Resolved membership field, or undefined when home-company-only. */
+export function tenancyMembershipField(
+  config?: LoomTenancyConfig,
+): string | undefined {
+  if (config?.membershipField === false) return undefined;
+  if (typeof config?.membershipField === 'string' && config.membershipField.trim()) {
+    return config.membershipField.trim();
+  }
+  return 'companyIds';
 }
 
 /** Resource opts into company scoping via `companyScoped` / `companyField`. */
@@ -90,38 +102,23 @@ export function mergeQueryScopes(
 /** Session marker for admin "all companies" (unscoped). */
 export const LOOM_ALL_COMPANIES = '';
 
+/**
+ * Companies the user may activate in the switcher.
+ * When `membershipField` has values, those ids are the only allowed set.
+ * When the list is empty/missing, falls back to home `companyId` only.
+ */
 export function membershipCompanyIds(
   record: Record<string, unknown>,
   homeCompanyId: string | undefined,
   membershipField?: string,
 ): string[] {
-  const ids = new Set<string>();
-  if (homeCompanyId) ids.add(String(homeCompanyId));
-  if (!membershipField) return [...ids];
-  const raw = record[membershipField];
-  if (Array.isArray(raw)) {
-    for (const item of raw) {
-      if (item != null && item !== '') ids.add(String(item));
-    }
-  } else if (typeof raw === 'string' && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        for (const item of parsed) {
-          if (item != null && item !== '') ids.add(String(item));
-        }
-      } else {
-        for (const part of raw.split(',')) {
-          const trimmed = part.trim();
-          if (trimmed) ids.add(trimmed);
-        }
-      }
-    } catch {
-      for (const part of raw.split(',')) {
-        const trimmed = part.trim();
-        if (trimmed) ids.add(trimmed);
-      }
-    }
+  if (membershipField) {
+    const fromList = [
+      ...new Set(
+        relationIdsFromValue(record[membershipField]).map((id) => String(id)),
+      ),
+    ];
+    if (fromList.length > 0) return fromList;
   }
-  return [...ids];
+  return homeCompanyId ? [String(homeCompanyId)] : [];
 }

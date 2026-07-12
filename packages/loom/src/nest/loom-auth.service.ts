@@ -23,6 +23,7 @@ import {
   membershipCompanyIds,
   tenancyCompanyResource,
   tenancyEnabled,
+  tenancyMembershipField,
   type LoomTenancyConfig,
 } from '../core/tenancy.js';
 import type { LoomCompany } from '../core/types.js';
@@ -310,7 +311,7 @@ export class LoomAuthService implements OnModuleInit {
     }
 
     const mapped = rows.map((row) => {
-      const id = String(row.id ?? row._id ?? '');
+      const id = recordIdFrom(row) || String(row.id ?? row._id ?? '');
       const name = String(row[labelField] ?? row.name ?? id);
       return mergeBranding(id, name);
     }).filter((c) => c.id);
@@ -319,7 +320,11 @@ export class LoomAuthService implements OnModuleInit {
 
     const userRecord = (await this.findUserRecordById(user.id)) ?? {};
     const allowed = new Set(
-      membershipCompanyIds(userRecord, user.homeCompanyId, config.membershipField),
+      membershipCompanyIds(
+        userRecord,
+        user.homeCompanyId,
+        tenancyMembershipField(config),
+      ),
     );
     return mapped.filter((c) => allowed.has(c.id));
   }
@@ -358,7 +363,7 @@ export class LoomAuthService implements OnModuleInit {
       const allowed = membershipCompanyIds(
         record,
         user.homeCompanyId,
-        this.tenancy.membershipField,
+        tenancyMembershipField(this.tenancy),
       );
       if (!allowed.includes(normalized)) {
         throw new LoomAuthorizationError('You cannot switch to that company');
@@ -651,7 +656,7 @@ export class LoomAuthService implements OnModuleInit {
     const allowed = membershipCompanyIds(
       record,
       user.homeCompanyId,
-      this.tenancy.membershipField,
+      tenancyMembershipField(this.tenancy),
     );
 
     if (isAdmin(user)) {
@@ -668,15 +673,16 @@ export class LoomAuthService implements OnModuleInit {
       return;
     }
 
-    const candidate =
+    const preferred =
       sessionCompanyId && sessionCompanyId !== LOOM_ALL_COMPANIES
         ? sessionCompanyId
         : user.homeCompanyId;
-    if (candidate && allowed.includes(candidate)) {
-      user.companyId = candidate;
+    if (preferred && allowed.includes(preferred)) {
+      user.companyId = preferred;
       return;
     }
-    user.companyId = user.homeCompanyId ?? allowed[0];
+    // Session/home outside membership → first allowed company (or none)
+    user.companyId = allowed[0];
   }
 
   private async syncPermissionsAndRoles(): Promise<void> {

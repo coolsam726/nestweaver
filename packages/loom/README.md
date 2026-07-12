@@ -943,7 +943,7 @@ auth: {
     enabled: true,
     companyResource: 'companies',
     companyField: 'companyId',
-    // membershipField: 'companyIds', // optional multi-company membership on users
+    membershipField: 'companyIds', // default — set false for home-company only
   },
 },
 ```
@@ -954,9 +954,14 @@ class ContactResource extends Resource {
 }
 ```
 
+**User membership:** each user has `companyIds` (supported companies) plus optional home `companyId`.
+Non-admins may only switch to ids in `companyIds` (falls back to home when the list is empty).
+Admins can switch to any company or “All companies”. Assign membership on the Users resource.
+
 When enabled:
 
 - Session stores the active `companyId` (admins may clear it for “All companies”)
+- Switcher lists only the user’s supported companies (admins see all)
 - `companyScoped` resources are list-filtered and IDOR-checked; creates stamp the active company
 - Topbar posts to `/admin/company/switch` (CSRF); JSON API: `GET /api/loom/companies`, `POST /api/loom/company/switch`
 

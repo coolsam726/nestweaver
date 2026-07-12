@@ -20,6 +20,10 @@ export class User {
   @Prop({ default: 0 })
   sessionVersion!: number;
 
+  /** Companies this user may switch into (Loom tenancy membership) */
+  @Prop({ type: [String], default: [] })
+  companyIds!: string[];
+
   @Prop({ type: Types.ObjectId, ref: 'Company' })
   companyId?: Types.ObjectId;
 

@@ -9,6 +9,7 @@ import {
   recordMatchesCompany,
   resourceCompanyField,
   tenancyEnabled,
+  tenancyMembershipField,
 } from '../src/core/tenancy.js';
 import type { ResourceMeta } from '../src/core/types.js';
 
@@ -140,18 +141,36 @@ describe('mergeQueryScopes', () => {
   });
 });
 
+describe('tenancyMembershipField', () => {
+  it('defaults to companyIds', () => {
+    assert.equal(tenancyMembershipField({}), 'companyIds');
+    assert.equal(tenancyMembershipField(undefined), 'companyIds');
+  });
+
+  it('can disable membership list', () => {
+    assert.equal(tenancyMembershipField({ membershipField: false }), undefined);
+  });
+});
+
 describe('membershipCompanyIds', () => {
-  it('includes home and membership list', () => {
+  it('uses membership list as the only allowed set when present', () => {
     assert.deepEqual(
       membershipCompanyIds({ companyIds: ['b', 'c'] }, 'a', 'companyIds').sort(),
-      ['a', 'b', 'c'],
+      ['b', 'c'],
+    );
+  });
+
+  it('falls back to home when membership list is empty', () => {
+    assert.deepEqual(
+      membershipCompanyIds({ companyIds: [] }, 'a', 'companyIds'),
+      ['a'],
     );
   });
 
   it('parses comma strings', () => {
     assert.deepEqual(
-      membershipCompanyIds({ companyIds: 'b, c' }, 'a', 'companyIds').sort(),
-      ['a', 'b', 'c'],
+      membershipCompanyIds({ companyIds: 'b, c' }, 'home', 'companyIds').sort(),
+      ['b', 'c'],
     );
   });
 });
