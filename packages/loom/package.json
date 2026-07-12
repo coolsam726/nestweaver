@@ -42,6 +42,7 @@
     "build": "pnpm build:css && tsc && node scripts/copy-assets.mjs",
     "build:css": "rm -f ./assets/admin.css && tailwindcss -i ./assets/input.css -o ./assets/admin.css --minify",
     "dev:css": "tailwindcss -i ./assets/input.css -o ./assets/admin.css --watch",
+    "test": "tsx --test test/**/*.test.ts",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
@@ -68,6 +69,7 @@
     "rxjs": "^7.8.2",
     "tailwindcss": "^4.1.8",
     "@tailwindcss/cli": "^4.1.8",
+    "tsx": "^4.20.3",
     "typescript": "^5.7.3",
     "typeorm": "^0.3.25",
     "drizzle-orm": "^0.44.2"

@@ -185,8 +185,13 @@ export interface LoomModuleOptions {
   resources: ResourceClass[];
   dataSource?: unknown;
   adapter?: import('../adapters/adapter.js').LoomAdapter;
-  /** Shell chrome — company switcher */
+  /**
+   * Companies for shell branding display.
+   * The topbar switcher is not interactive yet and does not enforce tenancy
+   * (see roadmap #13). Use policies for record-level company scoping today.
+   */
   companies?: LoomCompany[];
+  /** Display-only active company id (branding merge); not a tenant switch */
   currentCompanyId?: string;
   /** Shell chrome — profile panel (overridden by session user when auth is enabled) */
   user?: { name: string; email?: string; avatar?: string; role?: string };
@@ -195,6 +200,12 @@ export interface LoomModuleOptions {
    * When set, all routes except login and assets require a signed-in user.
    */
   auth?: import('./auth.js').LoomAuthOptions;
+  /**
+   * Allow running without `auth.secret` in production.
+   * Default false — production boots without a secret throw.
+   * Development still allows an open admin when auth is omitted.
+   */
+  allowAnonymousAdmin?: boolean;
   /**
    * JSON API for the same resources + RBAC (default enabled).
    * Served at `/api/loom` unless `prefix` is overridden.

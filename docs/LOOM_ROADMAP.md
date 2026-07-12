@@ -85,3 +85,16 @@ Until Critical + High are done, treat Loom as **beta / early admin**, not a prod
 5. **#13 tenancy** (product decision A vs B)
 
 Then Wave 2 remaining items, then Wave 3 as capacity allows.
+
+## Progress
+
+Shipped in foundations PR (partial Wave 1 + quick High wins):
+
+- [#9](https://github.com/coolsam726/nestweaver/issues/9) — initial unit tests (abilities, auth, rate limit, RBAC noop, sort whitelist)
+- [#10](https://github.com/coolsam726/nestweaver/issues/10) — login rate limiting
+- [#16](https://github.com/coolsam726/nestweaver/issues/16) — production fail-closed without `auth.secret`
+- [#18](https://github.com/coolsam726/nestweaver/issues/18) — sortable column whitelist
+- [#19](https://github.com/coolsam726/nestweaver/issues/19) — README honesty pass
+- [#20](https://github.com/coolsam726/nestweaver/issues/20) — plaintext password verify disabled in production by default
+
+Still open for Wave 1: #11 CSRF, #12 session revocation, #13 tenancy, #14 migrations.

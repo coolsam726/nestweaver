@@ -18,3 +18,5 @@ export * from './auth.js';
 export * from './abilities.js';
 export * from './policy.js';
 export * from './rbac-store.js';
+export * from './assert-options.js';
+export * from './login-rate-limit.js';

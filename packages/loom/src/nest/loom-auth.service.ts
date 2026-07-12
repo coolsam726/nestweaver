@@ -17,6 +17,10 @@ import { LOOM_ABILITIES } from '../core/abilities.js';
 import { relationIdsFromValue } from '../core/relations.js';
 import { ResourceRegistry } from '../core/registry.js';
 import {
+  LoginRateLimitError,
+  LoginRateLimiter,
+} from '../core/login-rate-limit.js';
+import {
   LOOM_RBAC,
   type LoomRbacStore,
   createLoomRbacStore,
@@ -29,6 +33,7 @@ import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY } from '../core/types.js';
 export class LoomAuthService implements OnModuleInit {
   private readonly logger = new Logger(LoomAuthService.name);
   private rbac: LoomRbacStore;
+  private readonly loginLimiter: LoginRateLimiter | null;
 
   constructor(
     @Inject(LOOM_OPTIONS) private readonly options: LoomModuleOptions,
@@ -41,6 +46,9 @@ export class LoomAuthService implements OnModuleInit {
       (options.orm && options.dataSource !== undefined
         ? createLoomRbacStore(options.orm, options.dataSource)
         : createNoopRbacStore());
+    const rate = options.auth?.loginRateLimit;
+    this.loginLimiter =
+      rate === false ? null : new LoginRateLimiter(rate === undefined ? {} : rate);
   }
 
   async onModuleInit(): Promise<void> {
@@ -106,27 +114,53 @@ export class LoomAuthService implements OnModuleInit {
     }
   }
 
-  async authenticate(email: string, password: string): Promise<{
+  async authenticate(
+    email: string,
+    password: string,
+    context?: { ip?: string },
+  ): Promise<{
     user: LoomAuthUser;
     cookie: string;
   } | null> {
     if (!this.options.auth) return null;
     const auth = this.options.auth;
+    const normalizedEmail = email.trim().toLowerCase();
+    const rateKey = `${context?.ip ?? 'unknown'}|${normalizedEmail || 'empty'}`;
+
+    try {
+      this.loginLimiter?.assertAllowed(rateKey);
+    } catch (error) {
+      if (error instanceof LoginRateLimitError) throw error;
+      throw error;
+    }
+
     const emailField = auth.emailField ?? 'email';
     const passwordField = auth.passwordField ?? 'password';
     const meta = this.userMeta();
-    const normalizedEmail = email.trim().toLowerCase();
     const record =
       (await this.adapter.findFirst(meta, { [emailField]: normalizedEmail })) ??
       (await this.findUserByEmailFallback(normalizedEmail));
-    if (!record) return null;
+    if (!record) {
+      this.loginLimiter?.recordFailure(rateKey);
+      return null;
+    }
 
     const stored = String(record[passwordField] ?? '');
-    const ok = await verifyPassword(password, stored);
-    if (!ok) return null;
+    const allowPlaintext =
+      auth.allowPlaintextPasswords ?? process.env.NODE_ENV !== 'production';
+    const ok = await verifyPassword(password, stored, { allowPlaintext });
+    if (!ok) {
+      this.loginLimiter?.recordFailure(rateKey);
+      return null;
+    }
 
     const user = await this.hydrateAuthUser(record);
-    if (!user) return null;
+    if (!user) {
+      this.loginLimiter?.recordFailure(rateKey);
+      return null;
+    }
+
+    this.loginLimiter?.recordSuccess(rateKey);
 
     if (stored && !isPasswordHashed(stored)) {
       try {
