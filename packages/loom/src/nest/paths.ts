@@ -36,3 +36,15 @@ export function loomUiJsPath(): string {
 export function loomAlpineJsPath(): string {
   return join(loomAssetsDir(), 'alpine.min.js');
 }
+
+export function loomSwaggerUiDir(): string {
+  return join(loomAssetsDir(), 'swagger-ui');
+}
+
+export function loomSwaggerUiBundlePath(): string {
+  return join(loomSwaggerUiDir(), 'swagger-ui-bundle.js');
+}
+
+export function loomSwaggerUiCssPath(): string {
+  return join(loomSwaggerUiDir(), 'swagger-ui.css');
+}

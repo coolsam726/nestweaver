@@ -176,7 +176,7 @@ LoomModule.forRootAsync({
 | `resources` | `ResourceClass[]` | `[]` | Registered resources |
 | `auth` | `LoomAuthOptions` | — | Cookie sessions + RBAC when `secret` is set |
 | `allowAnonymousAdmin` | `boolean` | `false` | Opt out of production fail-closed (not recommended) |
-| `api` | `boolean \| { enabled?, prefix?, version?, openapi? }` | enabled | JSON API at `/api/loom` (or `/api/loom/v1`) |
+| `api` | `boolean \| { enabled?, prefix?, version?, openapi? }` | enabled | JSON API at `/api/loom` (or `/api/loom/v1`); `openapi: true` adds `/openapi.json` + `/docs` |
 | `storage` | `LoomStorageOption` | — | Local disk or custom adapter for `file` / `image` fields |
 | `audit` | `false \| true \| LoomAuditConfig` | off | Hooks on create/update/delete/restore/bulk/export |
 | `observability` | `{ onError?, slowQueryMs? }` | — | Request IDs always set; optional error / slow-query hooks |
@@ -873,17 +873,30 @@ Enabled by default at **`/api/loom`**. Set **`api: { version: 'v1' }`** for a ve
 api: false                          // disable
 api: { prefix: 'internal/loom' }    // custom prefix (no leading slash)
 api: { version: 'v1' }             // → /api/loom/v1
-api: { openapi: true }             // GET {prefix}/openapi.json
+api: { openapi: true }             // GET {prefix}/openapi.json + {prefix}/docs
+api: { openapi: { docs: false } }  // spec only (no Swagger UI)
 api: { enabled: false }
 ```
 
 Stability: treat **`/api/loom/v1`** as the versioned surface; unversioned routes follow the same shapes today but may gain breaking changes until 1.0.
 
+### OpenAPI docs
+
+With **`api.openapi: true`**, Loom serves:
+
+| URL | Description |
+|-----|-------------|
+| `{prefix}/openapi.json` | OpenAPI 3 document (public) |
+| `{prefix}/docs` | Swagger UI (public; vendored assets, CSP-safe) |
+
+Sign in via `POST {prefix}/login` (or the admin panel) so **Try it out** sends the session cookie; CSRF is attached automatically for mutating calls. Resource routes remain auth-protected.
+
 ### Routes
 
 | Method | Path | Access |
 |--------|------|--------|
-| `GET` | `/openapi.json` | Auth — OpenAPI 3 spec (when `openapi` enabled) |
+| `GET` | `/openapi.json` | Public — OpenAPI 3 spec (when `openapi` enabled) |
+| `GET` | `/docs` | Public — Swagger UI (when `openapi` enabled; disable with `openapi: { docs: false }`) |
 | `POST` | `/login` | Public — sets session cookie |
 | `POST` | `/logout` | Public |
 | `POST` | `/forgot-password` | Public — request reset email |

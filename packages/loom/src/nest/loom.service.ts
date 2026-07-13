@@ -155,6 +155,16 @@ export class LoomService {
     return Boolean(api.openapi);
   }
 
+  /** Swagger UI at `{apiPrefix}/docs` when OpenAPI is on (disable with `openapi: { docs: false }`). */
+  get openapiDocsEnabled(): boolean {
+    if (!this.openapiEnabled) return false;
+    const api = this.options.api;
+    if (api && typeof api === 'object' && api.openapi && typeof api.openapi === 'object') {
+      return api.openapi.docs !== false;
+    }
+    return true;
+  }
+
   get storageEnabled(): boolean {
     return Boolean(this.storage);
   }
@@ -186,6 +196,14 @@ export class LoomService {
       const resourceClass = this.registry.resourceClass(meta.slug);
       return resourceClass?.canAccess?.(user) ?? resourceClass?.canViewAny?.(user) ?? true;
     });
+  }
+
+  /**
+   * Full resource catalog for OpenAPI / docs.
+   * Live JSON routes still enforce RBAC; the schema is intentionally public when OpenAPI is on.
+   */
+  documentedResources(): ResourceMeta[] {
+    return this.registry.all();
   }
 
   /** Session user for API responses (no secrets). */

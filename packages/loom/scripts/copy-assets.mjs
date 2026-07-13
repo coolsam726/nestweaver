@@ -47,4 +47,31 @@ if (!existsSync(alpineSource)) {
 }
 cpSync(alpineSource, join(cssTargetDir, 'alpine.min.js'));
 
+// Prefer node_modules swagger-ui-dist; fall back to vendored assets/swagger-ui.
+const swaggerTarget = join(cssTargetDir, 'swagger-ui');
+const swaggerVendored = join(packageRoot, 'assets', 'swagger-ui');
+mkdirSync(swaggerTarget, { recursive: true });
+mkdirSync(swaggerVendored, { recursive: true });
+const swaggerFiles = ['swagger-ui-bundle.js', 'swagger-ui.css'];
+try {
+  const swaggerPkg = dirname(require.resolve('swagger-ui-dist/package.json'));
+  for (const file of swaggerFiles) {
+    const fromNpm = join(swaggerPkg, file);
+    if (existsSync(fromNpm)) {
+      cpSync(fromNpm, join(swaggerVendored, file));
+    }
+  }
+} catch {
+  // use vendored assets/swagger-ui
+}
+for (const file of swaggerFiles) {
+  const source = join(swaggerVendored, file);
+  if (!existsSync(source)) {
+    throw new Error(
+      `Missing Swagger UI asset ${file} (install swagger-ui-dist or vendor assets/swagger-ui/)`,
+    );
+  }
+  cpSync(source, join(swaggerTarget, file));
+}
+
 console.log('Loom assets copied to dist/');
