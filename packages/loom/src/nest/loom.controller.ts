@@ -14,7 +14,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { recordIdFrom } from '../adapters/adapter.js';
+import { resolveListActions, resourceHasMediaFields } from '../core/list-actions.js';
 import { groupKanbanRecords } from '../core/resource.js';
 import { buildListViews, showListViewSwitcher, type ListViewId, type ListViewQuery } from '../core/list-views.js';
 import { buildPaginationContext, normalizeListQuery } from '../core/list-query.js';
@@ -443,6 +445,13 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
         const query = normalizeListQuery({ page, perPage, search, sort, direction, trashed });
         const result = await this.loom.list(resource, query);
         const relationLabels = await this.loom.relationLabelsForRecords(meta, result.items);
+        const listActions = resolveListActions(
+          meta,
+          this.loom.basePath,
+          currentLoomUser(),
+          this.loom.authEnabled,
+          abilities,
+        );
         return this.views.render('list', await shellContext(this.loom, {
           currentSlug: resource,
           pageTitle: meta.label,
@@ -457,6 +466,7 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           relationLabels,
           pagination: buildPaginationContext(this.loom.basePath, resource, query, result),
           flash: flashFromQuery(success, error),
+          ...listActions,
           ...listViewContext(this.loom, meta, 'table', query),
         }));
       } catch (error) {
@@ -500,6 +510,8 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           relationOptions,
           relationFieldContexts: this.loom.relationFieldContexts(meta),
           flash: flashFromQuery(success, error),
+          hasMediaFields: resourceHasMediaFields(meta),
+          mediaUploadUrl: `${this.loom.basePath}/${resource}/media/upload`,
         });
         return this.views.render('form', context, embed === '1' ? { layout: 'bare' } : undefined);
       } catch (error) {
@@ -553,6 +565,130 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         throw mapAuthError(error, HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    @Get(':resource/export')
+    async exportResource(
+      @Param('resource') resource: string,
+      @Query('page') page = '1',
+      @Query('perPage') perPage = '15',
+      @Query('search') search?: string,
+      @Query('sort') sort?: string,
+      @Query('direction') direction?: SortDirection,
+      @Query('trashed') trashed?: string,
+      @Query('format') format?: string,
+      @Res() res: {
+        setHeader?: (name: string, value: string) => void;
+        header?: (name: string, value: string) => unknown;
+        send?: (body?: unknown) => unknown;
+      } = {},
+    ): Promise<void> {
+      try {
+        const query = normalizeListQuery({ page, perPage, search, sort, direction, trashed });
+        const exported = await this.loom.exportRecords(
+          resource,
+          query,
+          this.loom.parseExportFormat(format),
+        );
+        res.setHeader?.('Content-Type', exported.contentType);
+        res.setHeader?.(
+          'Content-Disposition',
+          `attachment; filename="${exported.filename}"`,
+        );
+        res.header?.('Content-Type', exported.contentType);
+        res.header?.(
+          'Content-Disposition',
+          `attachment; filename="${exported.filename}"`,
+        );
+        res.send?.(exported.body);
+      } catch (error) {
+        throw mapAuthError(error);
+      }
+    }
+
+    @Post(':resource/bulk')
+    @Redirect()
+    async bulkAction(
+      @Param('resource') resource: string,
+      @Body() body: { action?: string; ids?: string | string[] },
+    ): Promise<{ url: string; statusCode: number }> {
+      try {
+        const action = body.action ?? 'delete';
+        const rawIds = body.ids;
+        const ids = Array.isArray(rawIds)
+          ? rawIds
+          : typeof rawIds === 'string'
+            ? rawIds.split(',').map((part) => part.trim()).filter(Boolean)
+            : [];
+        if (action === 'delete') {
+          const result = await this.loom.bulkDelete(resource, ids);
+          return {
+            url: `${this.loom.basePath}/${resource}?success=bulk-deleted&count=${result.deleted}`,
+            statusCode: 302,
+          };
+        }
+        throw new HttpException(`Unknown bulk action "${action}"`, HttpStatus.BAD_REQUEST);
+      } catch (error) {
+        const message = encodeURIComponent(
+          error instanceof Error ? error.message : 'Bulk action failed',
+        );
+        return {
+          url: `${this.loom.basePath}/${resource}?error=${message}`,
+          statusCode: 302,
+        };
+      }
+    }
+
+    @Post(':resource/media/upload')
+    @Header('Content-Type', 'application/json; charset=utf-8')
+    async uploadMedia(
+      @Param('resource') resource: string,
+      @Body()
+      body: {
+        field?: string;
+        filename?: string;
+        mimeType?: string;
+        data?: string;
+      },
+    ): Promise<string> {
+      try {
+        const stored = await this.loom.uploadMedia(resource, String(body.field ?? ''), {
+          filename: String(body.filename ?? 'upload'),
+          mimeType: String(body.mimeType ?? 'application/octet-stream'),
+          data: String(body.data ?? ''),
+        });
+        return JSON.stringify({ ok: true, media: stored });
+      } catch (error) {
+        throw mapAuthError(error, HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    @Get('media/*')
+    async serveMedia(
+      @Param() params: Record<string, string>,
+      @Res() res: {
+        setHeader?: (name: string, value: string) => void;
+        header?: (name: string, value: string) => unknown;
+        send?: (body?: unknown) => unknown;
+      },
+    ): Promise<void> {
+      const root = this.loom.localMediaRoot;
+      if (!root) {
+        throw new HttpException('Media storage is not configured', HttpStatus.NOT_FOUND);
+      }
+      const suffix = params['0'] ?? params['*'] ?? '';
+      const filePath = join(root, suffix);
+      if (!filePath.startsWith(root)) {
+        throw new HttpException('Invalid media path', HttpStatus.BAD_REQUEST);
+      }
+      try {
+        const body = readFileSync(filePath);
+        res.setHeader?.('Cache-Control', 'public, max-age=86400');
+        res.header?.('Cache-Control', 'public, max-age=86400');
+        res.send?.(body);
+      } catch {
+        throw new HttpException('Media not found', HttpStatus.NOT_FOUND);
       }
     }
 
@@ -641,6 +777,8 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
           relationFieldContexts: this.loom.relationFieldContexts(meta),
           relationLabels,
           flash: flashFromQuery(success, error),
+          hasMediaFields: resourceHasMediaFields(meta),
+          mediaUploadUrl: `${this.loom.basePath}/${resource}/media/upload`,
         });
         return this.views.render('form', context, embed === '1' ? { layout: 'bare' } : undefined);
       } catch (error) {

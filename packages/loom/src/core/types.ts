@@ -44,7 +44,9 @@ export type FieldType =
   | 'select'
   | 'relation'
   | 'email'
-  | 'password';
+  | 'password'
+  | 'file'
+  | 'image';
 
 export type RelationKind = 'many2one' | 'many2many' | 'one2many';
 
@@ -126,6 +128,12 @@ export interface FieldConfig {
   falseLabel?: string;
   /** Only show on create (e.g. password) */
   createOnly?: boolean;
+  /** File/image field limits */
+  media?: {
+    accept?: string[];
+    maxBytes?: number;
+    disk?: string;
+  };
 }
 
 export interface ColumnConfig {
@@ -232,13 +240,17 @@ export interface LoomModuleOptions {
   allowAnonymousAdmin?: boolean;
   /**
    * JSON API for the same resources + RBAC (default enabled).
-   * Served at `/api/loom` unless `prefix` is overridden.
+   * Served at `/api/loom` unless `prefix` / `version` is overridden.
    * Set `false` to disable.
    */
   api?: boolean | {
     enabled?: boolean;
-    /** Route prefix without leading slash (default: `api/loom`) */
+    /** Route prefix without leading slash (default: `api/loom` or `api/loom/{version}`) */
     prefix?: string;
+    /** API version segment — when set, default prefix becomes `api/loom/{version}` */
+    version?: string;
+    /** Emit OpenAPI 3 spec at `{prefix}/openapi.json` (default off) */
+    openapi?: boolean | { path?: string };
   };
   /**
    * Observability hooks for admin + JSON API.
@@ -273,6 +285,10 @@ export interface LoomModuleOptions {
    * or pass a config object to customize.
    */
   securityHeaders?: import('./security-headers.js').LoomSecurityHeadersOption;
+  /** Pluggable file storage for `file` / `image` fields. */
+  storage?: import('./storage.js').LoomStorageOption;
+  /** Audit hooks for create/update/delete/restore/bulk/export. */
+  audit?: import('./audit.js').LoomAuditOption;
 }
 
 export type ResourceClass = {
@@ -289,3 +305,4 @@ export type ResourceClass = {
 export const LOOM_OPTIONS = Symbol('LOOM_OPTIONS');
 export const LOOM_ADAPTER = Symbol('LOOM_ADAPTER');
 export const LOOM_REGISTRY = Symbol('LOOM_REGISTRY');
+export const LOOM_STORAGE = Symbol('LOOM_STORAGE');

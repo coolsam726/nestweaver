@@ -65,6 +65,10 @@
     {{else}}
       {{> field-m2m}}
     {{/if}}
+  {{else if (eq type 'file')}}
+    {{> field-file}}
+  {{else if (eq type 'image')}}
+    {{> field-file}}
   {{else}}
     <div class="loom-input-group{{#if prefix}} has-prefix{{/if}}{{#if suffix}} has-suffix{{/if}}">
       {{#if prefix}}<span class="loom-input-group__affix">{{prefix}}</span>{{/if}}

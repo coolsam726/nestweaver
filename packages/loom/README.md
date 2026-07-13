@@ -151,7 +151,9 @@ Inject tokens by ORM:
 | `resources` | `ResourceClass[]` | `[]` | Registered resources |
 | `auth` | `LoomAuthOptions` | — | Cookie sessions + RBAC when `secret` is set |
 | `allowAnonymousAdmin` | `boolean` | `false` | Opt out of production fail-closed (not recommended) |
-| `api` | `boolean \| { enabled?, prefix? }` | enabled | JSON API at `/api/loom` |
+| `api` | `boolean \| { enabled?, prefix?, version?, openapi? }` | enabled | JSON API at `/api/loom` (or `/api/loom/v1`) |
+| `storage` | `LoomStorageOption` | — | Local disk or custom adapter for `file` / `image` fields |
+| `audit` | `false \| true \| LoomAuditConfig` | off | Hooks on create/update/delete/restore/bulk/export |
 | `observability` | `{ onError?, slowQueryMs? }` | — | Request IDs always set; optional error / slow-query hooks |
 | `securityHeaders` | `false \| true \| LoomSecurityHeadersConfig` | off | Opt-in CSP + baseline security headers on admin + API |
 | `locale` / `messages` | `en` / overrides | — | Admin string catalog (`t('auth.signIn')`) |
@@ -364,6 +366,8 @@ Board URL: **`/admin/:resource/kanban`** (not a query string).
 | `EmailField` | `email` | |
 | `PasswordField` | `password` | Create-only by default; hidden on table/detail; hashed on save |
 | `RelationField` | `relation` | See [Relations](#relations) |
+| `FileField` | `file` | Requires `storage`; `.accept()`, `.maxBytes()`, `.disk()` |
+| `ImageField` | `image` | Image MIME validation by default |
 
 ### Shared field methods
 
@@ -453,38 +457,62 @@ Id lists stored as JSON text (Drizzle) or comma/simple-array are normalized via 
 
 ## Actions
 
-Built-ins: `CreateAction`, `ViewAction`, `EditAction`, `DeleteAction`.
+Built-ins: `CreateAction`, `ViewAction`, `EditAction`, `DeleteAction`, plus helpers `exportAction()` and `bulkDeleteAction()`.
 
 ```typescript
+import { Action, CreateAction, exportAction, bulkDeleteAction } from '@nestweaver/loom';
+
 static override headerActions() {
-  return [
-    CreateAction.make(),
-    // Custom header links are supported; built-in export/bulk UIs are not shipped yet.
-    Action.make('export')
-      .label('Export')
-      .color('gray')
-      .header()
-      .url('/admin/deals/export'), // your own route
-  ];
+  return [CreateAction.make(), exportAction()];
+}
+
+static override bulkActions() {
+  return [bulkDeleteAction(), Action.make('archive').bulk().label('Archive')];
 }
 ```
 
-Modifiers: `label`, `color('primary'|'accent'|'danger'|'gray')`, `icon`, `url`, `confirm`, `header()` / `row()` / `bulk()`, `link()`.
+When you omit export/delete helpers, Loom adds defaults when the user can export or delete.
 
-`bulk()` marks placement only — **there is no bulk-selection UI yet** (roadmap).
+List pages render **header** and **bulk** actions, with row checkboxes and a bulk action bar. Export uses `GET {basePath}/{slug}/export?format=csv|json` (respects current list filters).
 
-List actions are gated by the current user’s abilities (`@root.abilities` in templates).
+Modifiers: `label`, `color('primary'|'accent'|'danger'|'gray')`, `icon`, `url`, `confirm`, `method('GET'|'POST')`, `header()` / `row()` / `bulk()`, `link()`.
+
+Custom URLs: use `Action.make('export').header().url('/your/route')` to override built-in paths.
+
+List actions are gated by the current user’s abilities (`@root.abilities` in templates). Export checks `{slug}:export` when auth is enabled (falls back to `viewAny`).
+
+### Media uploads
+
+Configure storage, then use `FileField` / `ImageField`. The admin UI uploads via JSON (`POST …/media/upload`) and stores the returned public URL on the record.
+
+```typescript
+storage: {
+  disk: 'local',
+  root: './uploads',
+  publicUrlPrefix: '/admin/media',
+},
+```
+
+Implement `LoomStorageAdapter` for S3 or other backends.
+
+### Audit logging
+
+```typescript
+audit: {
+  onAudit: (event) => logger.info(event, 'loom.audit'),
+  redactFields: ['internalNote'],
+},
+```
+
+Events include actor, resource, action, optional before/after snapshots (password fields redacted), and `requestId`.
 
 ### Not available yet
 
 | Feature | Status |
 |---------|--------|
-| File / media fields | Not implemented |
-| Soft deletes / restore | Not implemented |
-| Audit log | Not implemented |
-| Bulk action bar | Action API only |
-| CSRF tokens / session revocation | Shipped (cookie double-submit + session version) |
-| Interactive company/tenant switcher | Enable with `auth.tenancy` + `companyScoped` resources |
+| Interactive company/tenant switcher | Shipped — `auth.tenancy` + `companyScoped` |
+| Dedicated audit log admin resource | Hook only — persist in `onAudit` |
+| S3 storage adapter (built-in) | Interface + local disk; bring your own adapter |
 ---
 
 ## Authentication
@@ -814,18 +842,23 @@ All paths are under `basePath` (default `/admin`).
 
 ## JSON API
 
-Enabled by default at **`/api/loom`**.
+Enabled by default at **`/api/loom`**. Set **`api: { version: 'v1' }`** for a versioned prefix (`/api/loom/v1`). Unversioned `/api/loom` remains the default for backward compatibility.
 
 ```typescript
 api: false                          // disable
 api: { prefix: 'internal/loom' }    // custom prefix (no leading slash)
+api: { version: 'v1' }             // → /api/loom/v1
+api: { openapi: true }             // GET {prefix}/openapi.json
 api: { enabled: false }
 ```
+
+Stability: treat **`/api/loom/v1`** as the versioned surface; unversioned routes follow the same shapes today but may gain breaking changes until 1.0.
 
 ### Routes
 
 | Method | Path | Access |
 |--------|------|--------|
+| `GET` | `/openapi.json` | Auth — OpenAPI 3 spec (when `openapi` enabled) |
 | `POST` | `/login` | Public — sets session cookie |
 | `POST` | `/logout` | Public |
 | `POST` | `/forgot-password` | Public — request reset email |
@@ -833,10 +866,14 @@ api: { enabled: false }
 | `GET` | `/me` | Auth — user, roles, permissions, accessible resources |
 | `GET` | `/resources` | Auth — resource discovery |
 | `GET` | `/:resource` | `viewAny` (+ policy list scope) |
+| `GET` | `/:resource/export` | export permission — CSV/JSON (`?format=`) |
+| `POST` | `/:resource/bulk` | `{ action: 'delete', ids: [] }` |
+| `POST` | `/:resource/media/upload` | `{ field, filename, mimeType, data }` (base64) |
 | `GET` | `/:resource/:id` | `view` |
 | `POST` | `/:resource` | `create` |
 | `PUT`/`PATCH` | `/:resource/:id` | `edit` |
 | `DELETE` | `/:resource/:id` | `delete` |
+| `POST` | `/:resource/:id/restore` | `edit` (soft-delete resources) |
 
 List query params: `page`, `perPage` (5–100, default 15), `search`, `sort`, `direction`.
 
