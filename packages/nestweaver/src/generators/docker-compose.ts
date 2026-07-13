@@ -166,7 +166,7 @@ function appEnvironment(options: ScaffoldOptions): string[] {
     lines.push('      LOOM_ADMIN_EMAIL: admin@example.com');
     lines.push('      LOOM_ADMIN_PASSWORD: password');
     lines.push('      LOOM_ADMIN_NAME: Admin');
-    lines.push('      LOOM_BASE_PATH: /admin');
+    lines.push('      LOOM_BASE_PATH: ${LOOM_BASE_PATH:-/admin}');
     lines.push('      LOOM_UPLOADS_DIR: /app/uploads');
   }
 
