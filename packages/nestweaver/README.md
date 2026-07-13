@@ -24,7 +24,8 @@ import { runCreate, collectOptions, scaffoldProject } from 'nestweaver';
 
 When you enable the admin panel during prompts, Nestweaver scaffolds a full Loom setup:
 
-- `apps/api/src/admin/loom-admin.module.ts` — `LoomModule.forRootAsync` with ORM inject + auth
+- `apps/api/src/admin/loom-admin.module.ts` — `LoomModule.forRootAsync` with sync `basePath` / `api` + ORM inject + auth
+
 - Resources: Company, User, Role, Permission (extending `@nestweaver/loom/base`)
 - ACL models matched to the selected ORM:
   - **TypeORM** — `LoomRole` / `LoomPermission` entities registered in `DatabaseModule`, plus `migrations/` + `data-source.ts` (`db:migrate`; prod `migrationsRun`)
@@ -38,6 +39,7 @@ When you enable the admin panel during prompts, Nestweaver scaffolds a full Loom
 | Variable | Purpose |
 |----------|---------|
 | `LOOM_AUTH_SECRET` | Enables cookie auth + RBAC |
+| `LOOM_BASE_PATH` | Admin URL prefix (default `/admin`). Must match `LoomModule.forRootAsync({ basePath })` — also used by the web proxy / SPA·SSR fallback |
 | `LOOM_ADMIN_EMAIL` | Seed admin email (default `admin@example.com`) |
 | `LOOM_ADMIN_PASSWORD` | Seed admin password (default `password`) |
 | `LOOM_ADMIN_NAME` | Seed admin display name |

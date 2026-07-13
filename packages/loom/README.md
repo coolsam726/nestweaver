@@ -145,6 +145,29 @@ Inject tokens by ORM:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `basePath` | `string` | `'/admin'` | Admin URL prefix |
+
+When using **`LoomModule.forRootAsync`**, pass `basePath` and `api` as **top-level sync options** (alongside `useFactory`). Nest registers controllers before the factory runs, so a `basePath` only inside the factory leaves the panel mounted at `/admin` while HTML links use your custom path (broken assets).
+
+```typescript
+LoomModule.forRootAsync({
+  basePath: '/app',                    // ← sync — owns the Nest route
+  api: { version: 'v1', openapi: true },
+  inject: [getConnectionToken()],
+  useFactory: (connection) => ({
+    orm: 'mongoose',
+    dataSource: connection,
+    resources: […],
+    storage: {
+      disk: 'local',
+      root: './uploads',
+      publicUrlPrefix: '/app/media', // keep in sync with basePath
+    },
+    auth: { secret: process.env.LOOM_AUTH_SECRET! },
+  }),
+})
+```
+
+`forRoot({ basePath: '/app', … })` works as usual — options are available when the controller is created.
 | `branding` | `Partial<LoomBranding>` | defaults + env | Panel name, colors, logos, fonts |
 | `title` | `string` | — | **Deprecated** — use `branding.brandName` |
 | `orm` | `'typeorm' \| 'prisma' \| 'drizzle' \| 'mongoose'` | — | Selects adapter + ACL store |

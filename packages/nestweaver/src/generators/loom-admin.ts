@@ -165,6 +165,8 @@ ${resourcesImport}
 @Module({
   imports: [
     LoomModule.forRootAsync({
+      basePath: process.env.LOOM_BASE_PATH || '/admin',
+      api: { version: 'v1', openapi: true },
       ${loomAsyncImports(options)}
       inject: [${loomInjectTokens(options)}],
       useFactory: ${factoryBody},
@@ -275,15 +277,11 @@ function loomFactoryBody(options: ScaffoldOptions): string {
           },
         },`;
   const wave4Block = `branding: { brandName: '${title}' },
-        api: {
-          version: 'v1',
-          openapi: true,
-        },
         securityHeaders: true,
         storage: {
           disk: 'local' as const,
           root: process.env.LOOM_UPLOADS_DIR || './uploads',
-          publicUrlPrefix: '/admin/media',
+          publicUrlPrefix: \`\${process.env.LOOM_BASE_PATH || '/admin'}/media\`,
         },
         audit: {
           onAudit: (event) => {
@@ -299,7 +297,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(dataSource: DataSource) => ({
         orm: 'typeorm' as const,
         dataSource,
-        basePath: '/admin',
+        basePath: process.env.LOOM_BASE_PATH || '/admin',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -308,7 +306,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(prisma: PrismaService) => ({
         orm: 'prisma' as const,
         dataSource: prisma,
-        basePath: '/admin',
+        basePath: process.env.LOOM_BASE_PATH || '/admin',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -317,7 +315,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(db: unknown) => ({
         orm: 'drizzle' as const,
         dataSource: { db, schema },
-        basePath: '/admin',
+        basePath: process.env.LOOM_BASE_PATH || '/admin',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -326,7 +324,7 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(connection: Connection) => ({
         orm: 'mongoose' as const,
         dataSource: connection,
-        basePath: '/admin',
+        basePath: process.env.LOOM_BASE_PATH || '/admin',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
