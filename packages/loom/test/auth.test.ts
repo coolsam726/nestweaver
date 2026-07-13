@@ -52,6 +52,13 @@ describe('sessions', () => {
 
   it('clears cookie with a single Max-Age=0', () => {
     const cookie = buildSessionCookie({ secret: 'x' }, null);
+    assert.match(cookie, /Path=\//);
+
+    const underApp = buildSessionCookie(
+      { secret: 'x', cookiePath: '/my-app' },
+      null,
+    );
+    assert.match(underApp, /Path=\/my-app/);
     assert.equal(cookie.includes('Max-Age=0'), true);
     assert.equal(cookie.match(/Max-Age=/g)?.length, 1);
   });

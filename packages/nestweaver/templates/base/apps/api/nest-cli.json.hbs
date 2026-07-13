@@ -4,7 +4,17 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
+{{#if isNestHbs}}
+    "assets": [
+      {
+        "include": "../views/**/*",
+        "outDir": "dist/views",
+        "watchAssets": true
+      }
+    ],
+{{else}}
     "assets": [],
+{{/if}}
     "watchOptions": {
       "ignored": ["**/node_modules/**", "**/dist/**", "**/.git/**"]
     }

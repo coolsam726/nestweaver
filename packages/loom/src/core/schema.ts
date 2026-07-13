@@ -50,8 +50,13 @@ export class FormSchemaBuilder {
   }
 
   build(): FormSchema {
-    const fields = this.sections.flatMap((section) => section.fields);
-    return { sections: this.sections, fields };
+    const sections = this.sections.map((section) => ({
+      ...section,
+      columns: section.columns ?? 2,
+      fields: [...section.fields],
+    }));
+    const fields = sections.flatMap((section) => section.fields);
+    return { sections, fields };
   }
 
   static from(schema: FormSchema): FormSchemaBuilder {

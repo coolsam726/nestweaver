@@ -3,6 +3,7 @@
   data-loom-m2o-config="{{jsonAttr (m2oConfig @root this)}}"
   x-data="loomM2oFromEl($el)"
   @click.outside="close()"
+  @focusout="onFocusOut($event)"
   @keydown.escape.prevent.stop="close()"
 >
   <input type="hidden" :name="name" :value="value === null || value === '' ? '' : value" />

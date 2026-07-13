@@ -102,7 +102,7 @@ export class AppModule {}
 
 - Panel: `/admin`
 - Resource list: `/admin/companies`
-- Login: `/admin/login` (when `auth.secret` is set)
+- Login: `/login` (when `auth.secret` is set; legacy `/admin/login` redirects here)
 
 ### Async registration
 
@@ -144,13 +144,15 @@ Inject tokens by ORM:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `basePath` | `string` | `'/admin'` | Admin URL prefix |
+| `appBasePath` | `string` | `''` | Optional mount prefix for the whole app (e.g. `/my-app`). Auth, admin, and API mount under it; cookie `Path` defaults to this value (or `/`). |
+| `basePath` | `string` | `{appBasePath}/admin` | Admin URL prefix. When `appBasePath` is set, keep this under that prefix. |
 
-When using **`LoomModule.forRootAsync`**, pass `basePath` and `api` as **top-level sync options** (alongside `useFactory`). Nest registers controllers before the factory runs, so a `basePath` only inside the factory leaves the panel mounted at `/admin` while HTML links use your custom path (broken assets).
+When using **`LoomModule.forRootAsync`**, pass `appBasePath`, `basePath`, and `api` as **top-level sync options** (alongside `useFactory`). Nest registers controllers before the factory runs, so a `basePath` only inside the factory leaves the panel mounted at `/admin` while HTML links use your custom path (broken assets).
 
 ```typescript
 LoomModule.forRootAsync({
-  basePath: '/app',                    // ← sync — owns the Nest route
+  appBasePath: process.env.APP_BASE_PATH || '', // e.g. '/my-app'
+  basePath: process.env.LOOM_BASE_PATH || undefined, // defaults to {appBasePath}/admin
   api: { version: 'v1', openapi: true },
   inject: [getConnectionToken()],
   useFactory: (connection) => ({
@@ -160,14 +162,17 @@ LoomModule.forRootAsync({
     storage: {
       disk: 'local',
       root: './uploads',
-      publicUrlPrefix: '/app/media', // keep in sync with basePath
+      publicUrlPrefix: '/my-app/admin/media', // keep in sync with basePath
     },
     auth: { secret: process.env.LOOM_AUTH_SECRET! },
   }),
 })
 ```
 
-`forRoot({ basePath: '/app', … })` works as usual — options are available when the controller is created.
+`forRoot({ appBasePath: '/my-app', … })` works as usual — options are available when the controller is created.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
 | `branding` | `Partial<LoomBranding>` | defaults + env | Panel name, colors, logos, fonts |
 | `title` | `string` | — | **Deprecated** — use `branding.brandName` |
 | `orm` | `'typeorm' \| 'prisma' \| 'drizzle' \| 'mongoose'` | — | Selects adapter + ACL store |
@@ -618,7 +623,7 @@ Auth is enabled when `auth.secret` is set.
 | `loginRateLimit` | `{ maxAttempts: 10, windowMs: 15m }` | Set `false` to disable |
 | `allowPlaintextPasswords` | `true` in dev / `false` in prod | Legacy plaintext column verify |
 | `csrf` | enabled | Double-submit cookie + `_csrf` / `X-CSRF-Token`; set `false` to disable |
-| `cookiePath` | `/` | Shared path for admin + API cookies |
+| `cookiePath` | `appBasePath` or `/` | Shared path for admin + API cookies |
 | `sessionVersionField` | `sessionVersion` | Bumped on logout/password change to revoke sessions |
 | `passwordReset` | enabled | Forgot/reset flow; set `false` to disable. Provide `sendPasswordResetEmail` to deliver links |
 
@@ -630,7 +635,7 @@ Sessions include a version (`sv`). Logout and password changes bump the version 
 
 ### Password reset
 
-Enabled whenever auth is on (set `passwordReset: false` to hide). Users use `/admin/forgot-password` (or `POST /api/loom/forgot-password`). Tokens are single-use, hashed in memory, and expire after 1 hour by default.
+Enabled whenever auth is on (set `passwordReset: false` to hide). Users use `/forgot-password` (or `POST /api/loom/forgot-password`). Tokens are single-use, hashed in memory, and expire after 1 hour by default.
 
 ```typescript
 auth: {
@@ -883,11 +888,19 @@ export class OrderResource extends Resource {
 | `GET` | `/:resource/:id/edit` | Edit form |
 | `POST` | `/:resource/:id` | Update |
 | `POST` | `/:resource/:id/delete` | Delete |
-| `GET`/`POST` | `/login`, `POST /logout` | Auth |
-| `GET`/`POST` | `/forgot-password`, `/reset-password` | Password recovery |
 | `GET` | `/assets/admin.css`, `loom-ui.js`, `branding.css` | Assets |
 
-All paths are under `basePath` (default `/admin`).
+Resource and asset paths are under `basePath` (default `/admin`).
+
+**Site-wide auth** (outside `basePath`):
+
+| Method | Path | Feature |
+|--------|------|---------|
+| `GET`/`POST` | `/login` | Sign in |
+| `GET`/`POST` | `/logout` | Sign out |
+| `GET`/`POST` | `/forgot-password`, `/reset-password` | Password recovery |
+
+Legacy `{basePath}/login` (and friends) redirect to these paths.
 
 ### List toolbar
 

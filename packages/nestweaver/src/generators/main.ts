@@ -1,5 +1,5 @@
 import type { ScaffoldOptions } from '../types.js';
-import { isSsrFrontend } from '../frontend.js';
+import { isNestHbsFrontend, isSsrFrontend } from '../frontend.js';
 import { NEST_DEFAULT_PORT, WEB_DEV_DEFAULT_PORT } from '../constants.js';
 
 const DEV_PROXY_SNIPPET = `
@@ -14,19 +14,43 @@ function webDevTarget(): string {
   );
 }
 
-/** API + Loom admin. Keep LOOM_BASE_PATH in sync with LoomModule.forRootAsync({ basePath }). */
+/** API + Loom admin + site-wide auth. Keep APP_BASE_PATH / LOOM_BASE_PATH in sync with LoomModule. */
 function isNestOwnedPath(url: string): boolean {
   const path = (url.split('?')[0] ?? '').replace(/\/$/, '') || '/';
-  const loomBase = (process.env.LOOM_BASE_PATH || '/admin').replace(/\/$/, '') || '/admin';
+  const appBaseRaw = (process.env.APP_BASE_PATH || '').trim();
+  const appBase = !appBaseRaw || appBaseRaw === '/'
+    ? ''
+    : (appBaseRaw.startsWith('/') ? appBaseRaw : \`/\${appBaseRaw}\`).replace(/\/+$/, '');
+  let rest = path;
+  if (appBase) {
+    if (path === appBase) return false;
+    if (!path.startsWith(\`\${appBase}/\`)) return false;
+    rest = path.slice(appBase.length) || '/';
+  }
+  let adminRel = (process.env.LOOM_BASE_PATH || '/admin').replace(/\/$/, '') || '/admin';
+  if (!adminRel.startsWith('/')) adminRel = \`/\${adminRel}\`;
+  if (appBase && adminRel.startsWith(appBase)) {
+    adminRel = adminRel.slice(appBase.length) || '/';
+  }
   return (
-    path === '/api' ||
-    path.startsWith('/api/') ||
-    path === loomBase ||
-    path.startsWith(\`\${loomBase}/\`)
+    rest === '/api' ||
+    rest.startsWith('/api/') ||
+    rest === adminRel ||
+    rest.startsWith(\`\${adminRel}/\`) ||
+    rest === '/login' ||
+    rest === '/logout' ||
+    rest === '/forgot-password' ||
+    rest === '/reset-password'
   );
 }`;
 
 export function generateMain(options: ScaffoldOptions): string {
+  if (isNestHbsFrontend(options)) {
+    return options.httpAdapter === 'express'
+      ? generateExpressNestHbsMain()
+      : generateFastifyNestHbsMain();
+  }
+
   if (options.httpAdapter === 'express') {
     return isSsrFrontend(options)
       ? generateExpressSsrMain(options)
@@ -36,6 +60,50 @@ export function generateMain(options: ScaffoldOptions): string {
   return isSsrFrontend(options)
     ? generateFastifySsrMain(options)
     : generateFastifySpaMain(options);
+}
+
+function generateExpressNestHbsMain(): string {
+  return `import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule.register(),
+  );
+  app.enableShutdownHooks();
+
+  const port = Number(process.env.PORT ?? ${NEST_DEFAULT_PORT});
+  await app.listen(port, '0.0.0.0');
+  console.log(\`Full-stack server listening on http://localhost:\${port}\`);
+}
+
+void bootstrap();
+`;
+}
+
+function generateFastifyNestHbsMain(): string {
+  return `import { NestFactory } from '@nestjs/core';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule.register(),
+    new FastifyAdapter(),
+  );
+  app.enableShutdownHooks();
+
+  const port = Number(process.env.PORT ?? ${NEST_DEFAULT_PORT});
+  await app.listen(port, '0.0.0.0');
+  console.log(\`Full-stack server listening on http://localhost:\${port}\`);
+}
+
+void bootstrap();
+`;
 }
 
 function generateExpressSsrMain(options: ScaffoldOptions): string {

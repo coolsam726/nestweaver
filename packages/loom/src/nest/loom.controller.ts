@@ -31,16 +31,14 @@ import type { ResourceMeta, SortDirection } from '../core/types.js';
 import { flashFromQuery } from '../core/flash.js';
 import { currentRequestContext } from '../core/request-context.js';
 import { LoomAuthorizationError } from '../core/abilities.js';
-import { LoginRateLimitError } from '../core/login-rate-limit.js';
 import { loomAdminCssPath, loomAlpineJsPath, loomUiJsPath } from './paths.js';
 import { LoomService } from './loom.service.js';
 import { LoomViewService } from './loom-view.service.js';
 import { LoomAuthService } from './loom-auth.service.js';
 import { LoomAuthInterceptor, setResponseCookie, setResponseCookies } from './loom-auth.interceptor.js';
 import { RelationQuickCreateBlockedError } from '../core/relations.js';
-import { clientIpFromRequest } from './request-ip.js';
-import { LoomCsrfError } from '../core/csrf.js';
 import { currentCsrfToken, currentLoomUser } from '../core/auth.js';
+import { safeRedirect, sendRedirect } from './loom-http.js';
 
 export function createLoomController(basePath = '/admin'): new (...args: never[]) => object {
   const route = basePath.replace(/^\//, '') || 'admin';
@@ -80,250 +78,6 @@ export function createLoomController(basePath = '/admin'): new (...args: never[]
     @Header('Cache-Control', 'no-cache')
     adminCss(): string {
       return readFileSync(loomAdminCssPath(), 'utf8');
-    }
-
-    @Get('login')
-    @Header('Content-Type', 'text/html; charset=utf-8')
-    loginForm(
-      @Query('error') error?: string,
-      @Query('success') success?: string,
-      @Query('redirect') redirectTo?: string,
-    ): string {
-      if (!this.auth.enabled) {
-        throw new HttpException('Authentication is not configured', HttpStatus.NOT_FOUND);
-      }
-      return this.views.render(
-        'login',
-        {
-          pageTitle: 'Sign in',
-          panelTitle: this.loom.panelTitle,
-          basePath: this.loom.basePath,
-          branding: this.loom.branding,
-          redirect: redirectTo || this.loom.basePath,
-          flash: flashFromQuery(success, error),
-          csrfToken: currentCsrfToken(),
-          passwordResetEnabled: this.auth.passwordResetEnabled,
-        },
-        { layout: 'bare' },
-      );
-    }
-
-    @Get('forgot-password')
-    @Header('Content-Type', 'text/html; charset=utf-8')
-    forgotPasswordForm(
-      @Query('error') error?: string,
-      @Query('success') success?: string,
-    ): string {
-      if (!this.auth.enabled || !this.auth.passwordResetEnabled) {
-        throw new HttpException('Password reset is not available', HttpStatus.NOT_FOUND);
-      }
-      return this.views.render(
-        'forgot-password',
-        {
-          pageTitle: 'Forgot password',
-          panelTitle: this.loom.panelTitle,
-          basePath: this.loom.basePath,
-          branding: this.loom.branding,
-          flash: flashFromQuery(success, error),
-          csrfToken: currentCsrfToken(),
-        },
-        { layout: 'bare' },
-      );
-    }
-
-    @Post('forgot-password')
-    async forgotPassword(
-      @Req() req: {
-        ip?: string;
-        headers?: Record<string, unknown>;
-        socket?: { remoteAddress?: string };
-        protocol?: string;
-      },
-      @Body() body: { email?: string },
-      @Res() res: {
-        setHeader?: (name: string, value: string) => void;
-        header?: (name: string, value: string) => unknown;
-        redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
-        status?: (code: number) => { send?: (body?: unknown) => unknown };
-        send?: (body?: unknown) => unknown;
-        statusCode?: number;
-      },
-    ): Promise<void> {
-      if (!this.auth.enabled || !this.auth.passwordResetEnabled) {
-        throw new HttpException('Password reset is not available', HttpStatus.NOT_FOUND);
-      }
-      try {
-        const host = String(req.headers?.host ?? '').split(',')[0]?.trim();
-        const proto = String(
-          (req.headers?.['x-forwarded-proto'] as string | undefined)?.split(',')[0]?.trim() ||
-            req.protocol ||
-            'http',
-        );
-        const resetBaseUrl = host
-          ? `${proto}://${host}${this.loom.basePath}`
-          : this.loom.basePath;
-        const result = await this.auth.requestPasswordReset(String(body.email ?? ''), {
-          ip: clientIpFromRequest(req),
-          resetBaseUrl,
-        });
-        sendRedirect(
-          res,
-          `${this.loom.basePath}/forgot-password?success=${encodeURIComponent(result.message)}`,
-        );
-      } catch (error) {
-        if (error instanceof LoginRateLimitError) {
-          sendRedirect(
-            res,
-            `${this.loom.basePath}/forgot-password?error=${encodeURIComponent(error.message)}`,
-          );
-          return;
-        }
-        if (error instanceof LoomCsrfError) {
-          sendRedirect(
-            res,
-            `${this.loom.basePath}/forgot-password?error=${encodeURIComponent(error.message)}`,
-          );
-          return;
-        }
-        throw error;
-      }
-    }
-
-    @Get('reset-password')
-    @Header('Content-Type', 'text/html; charset=utf-8')
-    resetPasswordForm(
-      @Query('token') token?: string,
-      @Query('error') error?: string,
-    ): string {
-      if (!this.auth.enabled || !this.auth.passwordResetEnabled) {
-        throw new HttpException('Password reset is not available', HttpStatus.NOT_FOUND);
-      }
-      const raw = String(token ?? '');
-      const valid = Boolean(raw && this.auth.peekPasswordResetToken(raw));
-      return this.views.render(
-        'reset-password',
-        {
-          pageTitle: 'Reset password',
-          panelTitle: this.loom.panelTitle,
-          basePath: this.loom.basePath,
-          branding: this.loom.branding,
-          token: raw,
-          tokenValid: valid,
-          flash: flashFromQuery(undefined, error),
-          csrfToken: currentCsrfToken(),
-        },
-        { layout: 'bare' },
-      );
-    }
-
-    @Post('reset-password')
-    async resetPassword(
-      @Body() body: { token?: string; password?: string; passwordConfirm?: string },
-      @Res() res: {
-        setHeader?: (name: string, value: string) => void;
-        header?: (name: string, value: string) => unknown;
-        redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
-        status?: (code: number) => { send?: (body?: unknown) => unknown };
-        send?: (body?: unknown) => unknown;
-        statusCode?: number;
-      },
-    ): Promise<void> {
-      if (!this.auth.enabled || !this.auth.passwordResetEnabled) {
-        throw new HttpException('Password reset is not available', HttpStatus.NOT_FOUND);
-      }
-      const token = String(body.token ?? '');
-      const password = String(body.password ?? '');
-      const confirm = String(body.passwordConfirm ?? '');
-      if (password !== confirm) {
-        sendRedirect(
-          res,
-          `${this.loom.basePath}/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent('Passwords do not match')}`,
-        );
-        return;
-      }
-      const result = await this.auth.resetPasswordWithToken(token, password);
-      if (!result.ok) {
-        sendRedirect(
-          res,
-          `${this.loom.basePath}/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent(result.message)}`,
-        );
-        return;
-      }
-      sendRedirect(
-        res,
-        `${this.loom.basePath}/login?success=${encodeURIComponent('Password updated. Sign in with your new password.')}`,
-      );
-    }
-
-    @Post('login')
-    async login(
-      @Req() req: { ip?: string; headers?: Record<string, unknown>; socket?: { remoteAddress?: string } },
-      @Body() body: { email?: string; password?: string; redirect?: string },
-      @Res() res: {
-        setHeader?: (name: string, value: string) => void;
-        header?: (name: string, value: string) => unknown;
-        redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
-        status?: (code: number) => { send?: (body?: unknown) => unknown; header?: (n: string, v: string) => unknown };
-        send?: (body?: unknown) => unknown;
-        statusCode?: number;
-      },
-    ): Promise<void> {
-      if (!this.auth.enabled) {
-        throw new HttpException('Authentication is not configured', HttpStatus.NOT_FOUND);
-      }
-      const email = String(body.email ?? '').trim();
-      const password = String(body.password ?? '');
-      const redirectTo = safeRedirect(body.redirect, this.loom.basePath);
-      try {
-        const result = await this.auth.authenticate(email, password, {
-          ip: clientIpFromRequest(req),
-        });
-        if (!result) {
-          const message = encodeURIComponent('Invalid email or password');
-          sendRedirect(res, `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`);
-          return;
-        }
-        setResponseCookies(res, result.cookies);
-        sendRedirect(res, redirectTo);
-      } catch (error) {
-        if (error instanceof LoginRateLimitError) {
-          const message = encodeURIComponent(error.message);
-          sendRedirect(
-            res,
-            `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`,
-          );
-          return;
-        }
-        if (error instanceof LoomCsrfError) {
-          const message = encodeURIComponent(error.message);
-          sendRedirect(
-            res,
-            `${this.loom.basePath}/login?error=${message}&redirect=${encodeURIComponent(redirectTo)}`,
-          );
-          return;
-        }
-        throw error;
-      }
-    }
-
-    @Post('logout')
-    async logout(
-      @Res() res: {
-        setHeader?: (name: string, value: string) => void;
-        appendHeader?: (name: string, value: string) => void;
-        header?: (name: string, value: string) => unknown;
-        redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
-        status?: (code: number) => { send?: (body?: unknown) => unknown };
-        send?: (body?: unknown) => unknown;
-        statusCode?: number;
-      },
-    ): Promise<void> {
-      const user = currentLoomUser();
-      if (user) {
-        await this.auth.bumpSessionVersion(user.id);
-      }
-      setResponseCookies(res, this.auth.clearSessionCookies());
-      sendRedirect(res, this.auth.loginPath);
     }
 
     @Post('company/switch')
@@ -1109,6 +863,8 @@ async function shellContext(
     title: pageTitle,
     pageTitle,
     panelTitle: loom.panelTitle,
+    appBasePath: loom.appBasePath,
+    homePath: loom.homePath,
     basePath: loom.basePath,
     branding: loom.branding,
     navGroups: loom.navigationGroups(),
@@ -1123,7 +879,10 @@ async function shellContext(
     user: loom.user,
     userInitial: loom.userInitial(),
     authEnabled: loom.authEnabled,
-    logoutPath: `${loom.basePath}/logout`,
+    loginPath: loom.loginPath,
+    logoutPath: loom.logoutPath,
+    forgotPasswordPath: loom.forgotPasswordPath,
+    resetPasswordPath: loom.resetPasswordPath,
     csrfToken: currentCsrfToken(),
     abilities,
     t: loom.t.bind(loom),
@@ -1169,47 +928,4 @@ function resolveCompanySwitchRedirect(
     }
   }
   return basePath;
-}
-
-function safeRedirect(value: unknown, fallback: string): string {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return fallback;
-  return raw;
-}
-
-function sendRedirect(
-  res: {
-    setHeader?: (name: string, value: string) => void;
-    header?: (name: string, value: string) => unknown;
-    redirect?: ((status: number, url: string) => unknown) | ((url: string, status?: number) => unknown);
-    status?: (code: number) => { send?: (body?: unknown) => unknown };
-    send?: (body?: unknown) => unknown;
-    statusCode?: number;
-  },
-  url: string,
-): void {
-  if (typeof res.header === 'function' && typeof res.status === 'function' && !res.setHeader) {
-    res.header('Location', url);
-    res.status(302).send?.('');
-    return;
-  }
-  if (typeof res.redirect === 'function') {
-    try {
-      (res.redirect as (status: number, url: string) => unknown)(302, url);
-      return;
-    } catch {
-      // continue
-    }
-    try {
-      (res.redirect as (url: string, status?: number) => unknown)(url, 302);
-      return;
-    } catch {
-      // continue
-    }
-  }
-  if (typeof res.setHeader === 'function') {
-    res.statusCode = 302;
-    res.setHeader('Location', url);
-    res.send?.('');
-  }
 }

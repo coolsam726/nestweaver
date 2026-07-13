@@ -134,17 +134,21 @@ function dependsOnServices(options: ScaffoldOptions): string[] {
 
 function appEnvironment(options: ScaffoldOptions): string[] {
   const { uid, gid } = scaffoldHostIds();
+  const nestHbs = options.frontend === 'nest-hbs';
   const lines = [
     '    environment:',
     '      CI: "true"',
     `      APP_UID: ${uid}`,
     `      APP_GID: ${gid}`,
     `      PORT: ${NEST_DEFAULT_PORT}`,
-    '      ENABLE_WEB_PROXY: "true"',
-    `      WEB_DEV_URL: http://127.0.0.1:${WEB_DEV_DEFAULT_PORT}`,
-    `      WEB_DEV_PORT: ${WEB_DEV_DEFAULT_PORT}`,
-    '      WEB_DEV_HOST: 0.0.0.0',
   ];
+
+  if (!nestHbs) {
+    lines.push('      ENABLE_WEB_PROXY: "true"');
+    lines.push(`      WEB_DEV_URL: http://127.0.0.1:${WEB_DEV_DEFAULT_PORT}`);
+    lines.push(`      WEB_DEV_PORT: ${WEB_DEV_DEFAULT_PORT}`);
+    lines.push('      WEB_DEV_HOST: 0.0.0.0');
+  }
 
   if (isSsrFrontend(options)) {
     lines.push(`      API_BASE_SERVER: ${nestApiBaseUrl()}`);
@@ -162,11 +166,12 @@ function appEnvironment(options: ScaffoldOptions): string[] {
   }
 
   if (options.admin) {
+    lines.push('      APP_BASE_PATH: ${APP_BASE_PATH:-}');
     lines.push('      LOOM_AUTH_SECRET: dev-loom-auth-secret-change-me');
     lines.push('      LOOM_ADMIN_EMAIL: admin@example.com');
     lines.push('      LOOM_ADMIN_PASSWORD: password');
     lines.push('      LOOM_ADMIN_NAME: Admin');
-    lines.push('      LOOM_BASE_PATH: ${LOOM_BASE_PATH:-/admin}');
+    lines.push('      LOOM_BASE_PATH: ${LOOM_BASE_PATH:-}');
     lines.push('      LOOM_UPLOADS_DIR: /app/uploads');
   }
 
@@ -192,6 +197,7 @@ function appVolumes(options: ScaffoldOptions): string[] {
 }
 
 export function generateDockerCompose(options: ScaffoldOptions): string {
+  const nestHbs = options.frontend === 'nest-hbs';
   const lines: string[] = [
     'services:',
     '  app:',
@@ -201,7 +207,13 @@ export function generateDockerCompose(options: ScaffoldOptions): string {
     '    restart: unless-stopped',
     '    ports:',
     `      - '${NEST_DEFAULT_PORT}:${NEST_DEFAULT_PORT}'`,
-    `      - '${WEB_DEV_DEFAULT_PORT}:${WEB_DEV_DEFAULT_PORT}'`,
+  ];
+
+  if (!nestHbs) {
+    lines.push(`      - '${WEB_DEV_DEFAULT_PORT}:${WEB_DEV_DEFAULT_PORT}'`);
+  }
+
+  lines.push(
     ...appEnvironment(options),
     ...dependsOnServices(options),
     ...appVolumes(options),
@@ -211,7 +223,7 @@ export function generateDockerCompose(options: ScaffoldOptions): string {
     '',
     'volumes:',
     ...infraVolumeNames(options).map((volume) => `  ${volume}:`),
-  ];
+  );
 
   return `${lines.join('\n')}\n`;
 }

@@ -105,9 +105,12 @@ export class LoomViewService {
         .replace(/'/g, '&#39;')
         .replace(/</g, '&lt;');
     });
-    Handlebars.registerHelper('gridItemStyle', (item: { columnSpan?: number | 'full'; columnStart?: number }, sectionColumns: number) => {
-      return resolveGridItemStyle(item ?? {}, (sectionColumns || 2) as 1 | 2 | 3 | 4);
-    });
+    Handlebars.registerHelper(
+      'gridItemStyle',
+      (item: { columnSpan?: number | 'full'; columnStart?: number }, sectionColumns: unknown) => {
+        return resolveGridItemStyle(item ?? {}, sectionColumns as number);
+      },
+    );
     Handlebars.registerHelper('m2oConfig', (root: Record<string, unknown>, field: FieldConfig) => {
       const resource = root.resource as ResourceMeta | undefined;
       const slug = resource?.slug ?? '';

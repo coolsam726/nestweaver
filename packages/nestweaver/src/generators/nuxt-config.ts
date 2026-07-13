@@ -17,24 +17,34 @@ const webDevHost = process.env.WEB_DEV_HOST ?? '127.0.0.1';
 const exposeDevServer =
   webDevHost === '0.0.0.0' || webDevHost === 'true' || webDevHost === '::';
 const isDev = process.env.NODE_ENV !== 'production';
+const appBaseRaw = (process.env.APP_BASE_PATH || '').trim();
+const appBase =
+  !appBaseRaw || appBaseRaw === '/'
+    ? ''
+    : (appBaseRaw.startsWith('/') ? appBaseRaw : \`/\${appBaseRaw}\`).replace(/\\/+$/, '');
+const appBaseURL = appBase ? \`\${appBase}/\` : '/';
+const apiMount = appBase ? \`\${appBase}/api\` : '/api';
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   ssr: ${ssr},
+  app: {
+    baseURL: appBaseURL,
+  },
   nitro: {
     preset: 'node-listener',
     ...(isDev && {
       devProxy: {
-        '/api/': {
-          target: \`\${nestOrigin}/api/\`,
+        [\`\${apiMount}/\`]: {
+          target: \`\${nestOrigin}\${apiMount}/\`,
           changeOrigin: true,
           prependPath: true,
         },
       },
       routeRules: {
-        '/api/**': {
-          proxy: \`\${nestOrigin}/api/**\`,
+        [\`\${apiMount}/**\`]: {
+          proxy: \`\${nestOrigin}\${apiMount}/**\`,
         },
       },
     }),
@@ -58,7 +68,7 @@ export default defineNuxtConfig({
     apiBaseServer:
       process.env.API_BASE_SERVER ?? '${apiBase}',
     public: {
-      apiBase: '/api',
+      apiBase: apiMount,
     },
   },
   devServer: {

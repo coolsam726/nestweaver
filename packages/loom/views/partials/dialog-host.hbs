@@ -15,7 +15,6 @@
       :aria-label="title"
       :class="{ 'is-fullscreen': fullscreen, 'is-prompt': confirmMode }"
       :style="panelStyle()"
-      @click.stop
       @keydown.tab="trapFocus($event)"
       x-ref="panel"
     >

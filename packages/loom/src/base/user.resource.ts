@@ -42,7 +42,7 @@ export abstract class UserResourceBase extends Resource {
         TextField.make('name').required().searchable(),
         EmailField.make('email').required().searchable(),
         PasswordField.make('password').required().label('Password'),
-        RelationField.make('roleIds').manyToMany('roles').widget('relationTable').label('Roles').columnSpanFull(),
+        RelationField.make('roleIds').manyToMany('roles').widget('combobox').label('Roles').columnSpanFull(),
         RelationField.make('companyIds')
           .manyToMany('companies')
           .widget('combobox')

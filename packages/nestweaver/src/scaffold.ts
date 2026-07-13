@@ -6,7 +6,7 @@ import { generateApiPackageJson } from './generators/api-package-json.js';
 import { generateAppModule } from './generators/app-module.js';
 import { generateEnvExample } from './generators/env.js';
 import { generateMain } from './generators/main.js';
-import { generateAngularJson, generateAngularProxyConf } from './generators/angular-config.js';
+import { generateAngularJson, generateAngularProxyConf, generateAngularBasePathHelper } from './generators/angular-config.js';
 import { generateNuxtConfig } from './generators/nuxt-config.js';
 import { generateViteConfig } from './generators/vite-config.js';
 import {
@@ -14,7 +14,7 @@ import {
   needsDockerServices,
   dockerInfraServiceNames,
 } from './generators/docker-compose.js';
-import { isSsrFrontend, isSpaFrontend } from './frontend.js';
+import { isNestHbsFrontend, isSsrFrontend, isSpaFrontend } from './frontend.js';
 import { NEST_DEFAULT_PORT } from './constants.js';
 import { generateTypeormDatabaseModule } from './generators/typeorm-database-module.js';
 import { generateTypeormDataSource } from './generators/typeorm-data-source.js';
@@ -31,6 +31,12 @@ const TEMPLATES_ROOT = join(PACKAGE_ROOT, 'templates');
 const SKIP = new Set(['node_modules', '.git', 'dist', '.output', '.nuxt']);
 
 export async function scaffoldProject(options: ScaffoldOptions): Promise<void> {
+  if (isNestHbsFrontend(options) && !options.admin) {
+    throw new Error(
+      'Frontend nest-hbs requires Loom admin (shared sessions and branding).',
+    );
+  }
+
   const context = toContext(options);
   const { targetDir } = context;
 
@@ -50,8 +56,10 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<void> {
 
   writeGeneratedFiles(options, context);
 
-  console.log('Installing dependencies...');
-  execSync('pnpm install', { cwd: targetDir, stdio: 'inherit' });
+  if (process.env.NESTWEAVER_SKIP_INSTALL !== '1') {
+    console.log('Installing dependencies...');
+    execSync('pnpm install', { cwd: targetDir, stdio: 'inherit' });
+  }
 
   printNextSteps(options);
 }
@@ -117,8 +125,12 @@ function writeGeneratedFiles(
         join(targetDir, 'apps/web/proxy.conf.js'),
         generateAngularProxyConf(),
       ],
+      [
+        join(targetDir, 'apps/web/base-path.cjs'),
+        generateAngularBasePathHelper(),
+      ],
     );
-  } else {
+  } else if (!isNestHbsFrontend(options)) {
     writes.push([
       join(targetDir, 'apps/web/vite.config.ts'),
       generateViteConfig(options),
@@ -228,6 +240,11 @@ function printNextSteps(options: ScaffoldOptions): void {
   console.log('');
   console.log(`Open http://localhost:${NEST_DEFAULT_PORT}`);
   if (options.admin) {
-    console.log(`Admin: http://localhost:${NEST_DEFAULT_PORT}/admin`);
+    console.log(
+      `Admin: http://localhost:${NEST_DEFAULT_PORT}/admin (or {APP_BASE_PATH}/admin when set)`,
+    );
+    console.log(
+      `Login: http://localhost:${NEST_DEFAULT_PORT}/login (or {APP_BASE_PATH}/login when set)`,
+    );
   }
 }

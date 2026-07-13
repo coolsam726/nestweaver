@@ -1,0 +1,69 @@
+<section class="site-hero" aria-label="{{brandName}}">
+  <svg class="site-hero__art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="siteWeaveA" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="var(--color-fg-brand)" stop-opacity="0.55" />
+        <stop offset="100%" stop-color="var(--color-loom-accent)" stop-opacity="0.15" />
+      </linearGradient>
+      <linearGradient id="siteWeaveB" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="var(--color-loom-accent)" stop-opacity="0.45" />
+        <stop offset="100%" stop-color="var(--color-fg-brand)" stop-opacity="0.08" />
+      </linearGradient>
+    </defs>
+    <g fill="none" stroke="url(#siteWeaveA)" stroke-width="1.25" opacity="0.9">
+      <path d="M720 40c180 80 320 220 380 420" />
+      <path d="M640 60c200 90 360 240 420 460" />
+      <path d="M560 90c220 100 390 260 450 500" />
+      <path d="M480 130c240 110 420 280 470 530" />
+      <path d="M400 180c250 120 440 300 490 560" />
+    </g>
+    <g fill="none" stroke="url(#siteWeaveB)" stroke-width="1.1" opacity="0.75">
+      <path d="M820 40c-160 100-280 260-320 480" />
+      <path d="M900 70c-180 110-310 280-350 510" />
+      <path d="M980 110c-200 120-340 300-370 540" />
+      <path d="M1060 160c-210 130-360 320-390 560" />
+      <path d="M1140 220c-220 140-370 340-400 580" />
+    </g>
+    <g fill="var(--color-fg-brand)" opacity="0.35">
+      <circle cx="1080" cy="210" r="5" />
+      <circle cx="1180" cy="340" r="3.5" />
+      <circle cx="980" cy="420" r="4" />
+      <circle cx="1260" cy="520" r="3" />
+    </g>
+    <g fill="var(--color-loom-accent)" opacity="0.4">
+      <circle cx="1240" cy="180" r="3" />
+      <circle cx="1120" cy="480" r="4.5" />
+      <circle cx="1320" cy="400" r="2.5" />
+    </g>
+  </svg>
+
+  <div class="site-hero__content">
+    <h1 class="site-hero__brand site-rise">{{brandName}}</h1>
+    <p class="site-hero__headline site-rise site-rise-delay-1">
+      One session. Product portal and admin, woven together.
+    </p>
+    <p class="site-hero__lede site-rise site-rise-delay-2">
+      Sign in once — theme, branding, and cookies stay in sync from the public site to Loom.
+    </p>
+    <div class="site-hero__actions site-rise site-rise-delay-3">
+      {{#if user}}
+        <a href="{{appPath}}" class="site-btn site-btn--primary">Open portal</a>
+      {{else}}
+        {{#if authEnabled}}
+          <a href="{{loginPath}}" class="site-btn site-btn--primary">Sign in</a>
+        {{/if}}
+      {{/if}}
+      <a href="{{adminPath}}" class="site-btn site-btn--ghost">Admin panel</a>
+    </div>
+  </div>
+</section>
+
+<section class="site-section">
+  <div class="site-section__inner site-rise">
+    <h2 class="site-section__title">Build the product here</h2>
+    <p class="site-section__copy">
+      Keep customer-facing pages in this Handlebars shell. Leave CRUD, RBAC, and ops in
+      <a href="{{adminPath}}">{{adminPath}}</a> — same Nest process, same Loom session.
+    </p>
+  </div>
+</section>

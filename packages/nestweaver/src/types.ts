@@ -7,7 +7,8 @@ export type Frontend =
   | 'angular'
   | 'vite-react'
   | 'vite-vue'
-  | 'vite-svelte';
+  | 'vite-svelte'
+  | 'nest-hbs';
 
 export interface ScaffoldOptions {
   projectName: string;
@@ -29,6 +30,8 @@ export interface TemplateContext extends ScaffoldOptions {
   isNuxt: boolean;
   isAngular: boolean;
   isVite: boolean;
+  isNestHbs: boolean;
+  hasWebApp: boolean;
   isNuxtSsr: boolean;
   isSsr: boolean;
   isSpa: boolean;

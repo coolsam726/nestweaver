@@ -5,10 +5,21 @@ export { LoomAuthService } from './loom-auth.service.js';
 export { LoomAuthGuard, LoomAbilityGuard } from './loom-auth.guard.js';
 export { LoomAuthContextInterceptor } from './loom-auth-context.interceptor.js';
 export {
+  setResponseCookie,
+  setResponseCookies,
+} from './loom-auth.interceptor.js';
+export {
   LoomPublic,
   RequireLoomAbility,
   RequirePermission,
 } from './loom-auth.decorators.js';
 export { createLoomController } from './loom.controller.js';
 export { createLoomApiController } from './loom-api.controller.js';
-export { loomAdminCssPath, loomAssetsDir, loomViewsDir } from './paths.js';
+export {
+  loomAdminCssPath,
+  loomAlpineJsPath,
+  loomAssetsDir,
+  loomUiJsPath,
+  loomViewsDir,
+} from './paths.js';
+export { clientIpFromRequest } from './request-ip.js';

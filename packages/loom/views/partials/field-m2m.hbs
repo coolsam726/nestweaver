@@ -3,6 +3,7 @@
   data-loom-m2m-config="{{jsonAttr (m2mConfig @root this)}}"
   x-data="loomM2mFromEl($el)"
   @click.outside="close()"
+  @focusout="onFocusOut($event)"
   @keydown.escape.prevent.stop="close()"
 >
   <input type="hidden" :name="name" :value="valueCsv" />

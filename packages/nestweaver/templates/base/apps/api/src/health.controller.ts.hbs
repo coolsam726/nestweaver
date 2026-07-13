@@ -1,7 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import type { HealthResponse } from '{{sharedScope}}';
+import { appBaseFromEnv, joinAppPath, nestControllerPath } from './app-path';
 
-@Controller('api/health')
+@Controller(nestControllerPath(joinAppPath(appBaseFromEnv(), 'api/health')))
 export class HealthController {
   @Get()
   getHealth(): HealthResponse {

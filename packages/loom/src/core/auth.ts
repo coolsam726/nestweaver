@@ -115,7 +115,7 @@ export interface LoomAuthOptions {
   passwordReset?: false | {
     /** Token lifetime (default: 1 hour) */
     tokenTtlMs?: number;
-    /** Absolute or path prefix used when building reset URLs (default: request basePath) */
+    /** Absolute origin (or empty) used when building reset URLs (default: request host; path is always `/reset-password`) */
     publicBaseUrl?: string;
     /**
      * Deliver the reset email. Apps must provide this for end-user recovery.

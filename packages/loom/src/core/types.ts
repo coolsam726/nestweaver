@@ -223,6 +223,16 @@ export interface LoomCompany {
 }
 
 export interface LoomModuleOptions {
+  /**
+   * Mount prefix for the entire Loom surface (auth, admin, API) when the app
+   * is hosted under a subdirectory (e.g. `/my-app`). Empty / omitted = domain root.
+   * Admin defaults to `{appBasePath}/admin`; auth to `{appBasePath}/login`, etc.
+   */
+  appBasePath?: string;
+  /**
+   * Admin URL prefix (default `{appBasePath}/admin` or `/admin`).
+   * When `appBasePath` is set, this should remain under that prefix.
+   */
   basePath?: string;
   /** @deprecated Use `branding.brandName` */
   title?: string;

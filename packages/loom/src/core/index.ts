@@ -1,6 +1,7 @@
 export * from './branding.js';
 export * from './menu.js';
 export * from './types.js';
+export * from './app-path.js';
 export * from './fields.js';
 export * from './actions.js';
 export * from './schema.js';

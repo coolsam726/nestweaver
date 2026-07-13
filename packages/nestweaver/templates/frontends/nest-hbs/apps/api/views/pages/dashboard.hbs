@@ -1,0 +1,44 @@
+<section class="portal-welcome site-rise">
+  <p class="portal-welcome__kicker">Portal</p>
+  <h1 class="portal-welcome__title">
+    {{#if user.name}}
+      Welcome back, {{user.name}}
+    {{else}}
+      {{#if user.email}}
+        Welcome back
+      {{else}}
+        Your portal
+      {{/if}}
+    {{/if}}
+  </h1>
+  <p class="portal-welcome__lede">
+    This is the signed-in product home — lighter than admin, sharing the same session and branding.
+    Extend it with pages your customers actually use.
+  </p>
+</section>
+
+<section class="portal-panel site-rise site-rise-delay-1" aria-label="Portal shortcuts">
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Signed in</p>
+      <p class="portal-row__value">{{#if user.email}}{{user.email}}{{else}}Guest session{{/if}}</p>
+      <p class="portal-row__meta">Session shared with Loom admin</p>
+    </div>
+  </div>
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Operations</p>
+      <p class="portal-row__value">Admin panel</p>
+      <p class="portal-row__meta">Resources, RBAC, and media live under Loom</p>
+    </div>
+    <a href="{{adminPath}}" class="site-btn site-btn--primary">Open admin</a>
+  </div>
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Public site</p>
+      <p class="portal-row__value">Marketing &amp; landing</p>
+      <p class="portal-row__meta">Same brand tokens and theme preference</p>
+    </div>
+    <a href="{{homePath}}" class="site-btn site-btn--ghost">View home</a>
+  </div>
+</section>

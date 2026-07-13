@@ -53,6 +53,7 @@ export async function collectOptions(
       { value: 'vite-react', name: FRONTEND_LABELS['vite-react'] },
       { value: 'vite-vue', name: FRONTEND_LABELS['vite-vue'] },
       { value: 'vite-svelte', name: FRONTEND_LABELS['vite-svelte'] },
+      { value: 'nest-hbs', name: FRONTEND_LABELS['nest-hbs'] },
     ],
     default: 'nuxt',
   });
@@ -68,6 +69,8 @@ export async function collectOptions(
       ],
       default: 'ssr',
     });
+  } else if (frontend === 'nest-hbs') {
+    renderMode = 'spa';
   }
 
   const databaseChoice = await select<DatabaseChoice>({
@@ -125,9 +128,12 @@ export async function collectOptions(
     console.log('  Tip: add an ORM to scaffold Companies and Users resources in Loom.');
   }
 
-  const frontendSummary = supportsRenderMode(frontend)
-    ? `${FRONTEND_LABELS[frontend]} (${renderMode.toUpperCase()})`
-    : `${FRONTEND_LABELS[frontend]} (SPA)`;
+  const frontendSummary =
+    frontend === 'nest-hbs'
+      ? FRONTEND_LABELS[frontend]
+      : supportsRenderMode(frontend)
+        ? `${FRONTEND_LABELS[frontend]} (${renderMode.toUpperCase()})`
+        : `${FRONTEND_LABELS[frontend]} (SPA)`;
 
   console.log('');
   console.log(`Scaffolding ${projectName} → ${targetDir}`);

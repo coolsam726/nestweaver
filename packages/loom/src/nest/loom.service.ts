@@ -37,6 +37,11 @@ import { parseImportCsv } from '../core/import.js';
 import type { ListQuery, ResourceMeta, LoomModuleOptions, LoomCompany } from '../core/types.js';
 import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY, LOOM_STORAGE } from '../core/types.js';
 import {
+  defaultAdminBasePath,
+  joinAppPath,
+  normalizeAppBasePath,
+} from '../core/app-path.js';
+import {
   decodeBase64Upload,
   validateMediaUpload,
   type LoomStorageAdapter,
@@ -102,8 +107,16 @@ export class LoomService {
   get csrfToken(): string {
     return currentCsrfToken();
   }
+  get appBasePath(): string {
+    return normalizeAppBasePath(this.options.appBasePath);
+  }
+
+  get homePath(): string {
+    return this.appBasePath || '/';
+  }
+
   get basePath(): string {
-    return this.options.basePath ?? '/admin';
+    return this.options.basePath ?? defaultAdminBasePath(this.appBasePath);
   }
 
   get panelTitle(): string {
@@ -127,23 +140,44 @@ export class LoomService {
     return Boolean(this.options.auth?.secret);
   }
 
+  get loginPath(): string {
+    return this.authService.loginPath;
+  }
+
+  get logoutPath(): string {
+    return this.authService.logoutPath;
+  }
+
+  get forgotPasswordPath(): string {
+    return this.authService.forgotPasswordPath;
+  }
+
+  get resetPasswordPath(): string {
+    return this.authService.resetPasswordPath;
+  }
+
   get apiEnabled(): boolean {
-    const api = this.options.api;
-    if (api === false) return false;
-    if (api === true || api === undefined) return true;
-    return api.enabled !== false;
+    return Boolean(
+      this.options.api !== false &&
+        !(typeof this.options.api === 'object' && this.options.api.enabled === false),
+    );
   }
 
   get apiPrefix(): string {
     const api = this.options.api;
+    const appBase = this.appBasePath;
+    let relative = 'api/loom';
     if (api && typeof api === 'object' && api.prefix) {
-      return api.prefix.replace(/^\//, '').replace(/\/$/, '');
-    }
-    if (api && typeof api === 'object' && api.version) {
+      relative = api.prefix.replace(/^\//, '').replace(/\/$/, '') || 'api/loom';
+      const appCtrl = appBase.replace(/^\//, '');
+      if (appCtrl && (relative === appCtrl || relative.startsWith(`${appCtrl}/`))) {
+        return relative;
+      }
+    } else if (api && typeof api === 'object' && api.version) {
       const version = api.version.replace(/^\//, '').replace(/\/$/, '');
-      return version ? `api/loom/${version}` : 'api/loom';
+      relative = version ? `api/loom/${version}` : 'api/loom';
     }
-    return 'api/loom';
+    return joinAppPath(appBase, relative).replace(/^\//, '');
   }
 
   get apiVersion(): string | undefined {

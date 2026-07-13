@@ -14,7 +14,7 @@
           <h3 class="text-sm font-semibold text-heading">{{title}}</h3>
           {{#if description}}<p class="mt-1 text-sm text-body-subtle">{{description}}</p>{{/if}}
         </div>
-        <div class="loom-form-grid" style="--loom-form-cols: {{or columns 2}}">
+        <div class="loom-form-grid" style="--loom-form-cols: {{#if columns}}{{columns}}{{else}}2{{/if}}">
           {{#each fields}}
             {{#unless hiddenOnForm}}
               <div class="loom-field-cell" style="{{gridItemStyle this (or ../columns 2)}}">
@@ -93,7 +93,7 @@
       <fieldset class="loom-card rounded-xl p-6">
         <legend class="text-sm font-semibold text-heading mb-4 px-1">{{title}}</legend>
         {{#if description}}<p class="mb-4 -mt-2 text-sm text-body-subtle">{{description}}</p>{{/if}}
-        <div class="loom-form-grid" style="--loom-form-cols: {{or columns 2}}">
+        <div class="loom-form-grid" style="--loom-form-cols: {{#if columns}}{{columns}}{{else}}2{{/if}}">
           {{#each fields}}
             {{#unless hiddenOnForm}}
               <div class="loom-field-cell" style="{{gridItemStyle this (or ../columns 2)}}">
