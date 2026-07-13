@@ -1,8 +1,10 @@
 # @nestweaver/loom
 
-**Declarative admin panel for NestJS** — part of the [nestweaver](https://github.com/coolsam726/nuxest) ecosystem.
+**Declarative admin for NestJS** — the flagship of [nestweaver](https://github.com/coolsam726/nestweaver): fullstack scaffolding plus a production-minded admin you drop into the same app.
 
-Loom turns your models into a full CRUD admin at `/admin`: Filament-style resources, list and kanban views, modal forms, relation widgets, cookie auth, and string-based RBAC. It ships ORM adapters for **TypeORM**, **Prisma**, **Drizzle**, and **Mongoose**.
+Loom turns your models into a full CRUD admin at `/admin`: Filament-style resources, list and kanban views, modal forms, relation widgets, cookie auth, string-based RBAC, company tenancy, media fields, audit hooks, and a versioned JSON API. It ships ORM adapters for **TypeORM**, **Prisma**, **Drizzle**, and **Mongoose**.
+
+**1.0 readiness:** [docs/LOOM_1_0.md](../../docs/LOOM_1_0.md) · [roadmap](../../docs/LOOM_ROADMAP.md)
 
 | Stack | Role |
 |-------|------|
