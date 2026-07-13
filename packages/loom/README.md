@@ -602,7 +602,7 @@ securityHeaders: {
 },
 ```
 
-Default CSP allows same-origin assets, inline theme boot script, and Alpine from `cdn.jsdelivr.net` — matching the bundled admin UI. For stricter policies, self-host Alpine or add nonces and pass a custom `contentSecurityPolicy` string.
+Default CSP allows same-origin assets, inline theme boot script, and Alpine from `cdn.jsdelivr.net` (includes `'unsafe-eval'` because Alpine evaluates expressions via `Function`). For stricter policies, self-host Alpine or add nonces and pass a custom `contentSecurityPolicy` string.
 
 Deprecated APIs log one-time `[Loom deprecation]` warnings at boot or first use. Set `LOOM_DEPRECATION_WARNINGS=0` to silence them in tests.
 

@@ -53,8 +53,8 @@ function hostFromUrl(url: string): string | null {
 
 /**
  * Baseline CSP that works with Loom's bundled admin UI (inline theme script,
- * Alpine from jsDelivr, same-origin assets). Tighten further with nonces or
- * self-hosted Alpine when you need stricter policies.
+ * Alpine from jsDelivr — which requires `unsafe-eval` — and same-origin assets).
+ * Tighten further with nonces or self-hosted Alpine when you need stricter policies.
  */
 export function defaultLoomContentSecurityPolicy(
   branding?: Partial<LoomBranding>,
@@ -66,7 +66,8 @@ export function defaultLoomContentSecurityPolicy(
 
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    // Alpine evaluates expressions via Function(); CDN build needs unsafe-eval.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
     `style-src ${styleSrc}`,
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",

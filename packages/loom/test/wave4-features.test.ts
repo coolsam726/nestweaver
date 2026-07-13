@@ -29,8 +29,9 @@ describe('buildLoomSecurityHeaders', () => {
     const headers = buildLoomSecurityHeaders({ enabled: true });
     assert.equal(headers['X-Content-Type-Options'], 'nosniff');
     assert.equal(headers['X-Frame-Options'], 'DENY');
-    assert.match(headers['Content-Security-Policy'], /cdn\.jsdelivr\.net/);
     assert.match(headers['Content-Security-Policy'], /unsafe-inline/);
+    assert.match(headers['Content-Security-Policy'], /unsafe-eval/);
+    assert.match(headers['Content-Security-Policy'], /cdn\.jsdelivr\.net/);
   });
 
   it('supports report-only CSP and custom overrides', () => {
