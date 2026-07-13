@@ -1,7 +1,7 @@
 {
   "name": "@nestweaver/loom",
   "version": "0.1.0",
-  "description": "Loom — declarative admin panel for NestJS. Resource CRUD UI with Handlebars, Tailwind CSS, and Alpine.js.",
+  "description": "Loom — declarative NestJS admin: resources, RBAC, tenancy, media, and JSON API (Handlebars + Tailwind + Alpine).",
   "keywords": [
     "nestweaver",
     "nestjs",

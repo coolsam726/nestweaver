@@ -2,6 +2,8 @@
 
 Core scaffolder used by `create-nestweaver` and the `weaver` binary.
 
+Nestweaver scaffolds **NestJS + frontend** monorepos. When you enable the admin panel, it wires **[Loom](../loom/README.md)** — declarative resources, auth/RBAC, tenancy, media, and a versioned JSON API — into the same app.
+
 ## Usage
 
 ```bash
@@ -20,7 +22,7 @@ import { runCreate, collectOptions, scaffoldProject } from 'nestweaver';
 
 ## Admin panel (Loom)
 
-When you enable the admin panel during prompts, Nestweaver scaffolds a full [Loom](../loom/README.md) setup:
+When you enable the admin panel during prompts, Nestweaver scaffolds a full Loom setup:
 
 - `apps/api/src/admin/loom-admin.module.ts` — `LoomModule.forRootAsync` with ORM inject + auth
 - Resources: Company, User, Role, Permission (extending `@nestweaver/loom/base`)
@@ -29,6 +31,7 @@ When you enable the admin panel during prompts, Nestweaver scaffolds a full [Loo
   - **Prisma** — `LoomRole` / `LoomPermission` in `schema.prisma` + initial `prisma/migrations` (`db:migrate` / `db:push`)
   - **Drizzle** — `loomRoles` / `loomPermissions` tables + `drizzle/0000_init.sql` (`db:migrate` / `db:push`)
   - **Mongoose** — Company/User schemas; Role/Permission registered at runtime by Loom
+- **Wave 4 defaults:** `api.version: 'v1'` + OpenAPI, `securityHeaders`, local `storage` (`LOOM_UPLOADS_DIR`), and `audit.onAudit` (dev console)
 
 ### Env vars (scaffolded)
 
@@ -38,10 +41,11 @@ When you enable the admin panel during prompts, Nestweaver scaffolds a full [Loo
 | `LOOM_ADMIN_EMAIL` | Seed admin email (default `admin@example.com`) |
 | `LOOM_ADMIN_PASSWORD` | Seed admin password (default `password`) |
 | `LOOM_ADMIN_NAME` | Seed admin display name |
+| `LOOM_UPLOADS_DIR` | Local media root for `FileField` / `ImageField` (default `./uploads`) |
 | `LOOM_BRAND_*` | Optional branding overrides (see Loom README) |
 
-After `docker compose up` / `pnpm dev`, open `/admin` and sign in with the seed credentials.
+After `docker compose up` / `pnpm dev`, open `/admin` and sign in with the seed credentials. OpenAPI: `/api/loom/v1/openapi.json`.
 
 For production databases, run `pnpm --filter api db:migrate` (TypeORM also applies migrations automatically when `NODE_ENV=production`).
 
-Full feature docs: [`@nestweaver/loom` README](../loom/README.md).
+Full feature docs: [`@nestweaver/loom` README](../loom/README.md) · [Loom 1.0 readiness](../../docs/LOOM_1_0.md).

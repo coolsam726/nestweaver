@@ -53,6 +53,8 @@ export function generateEnvExample(options: ScaffoldOptions): string {
     lines.push('LOOM_ADMIN_EMAIL=admin@example.com');
     lines.push('LOOM_ADMIN_PASSWORD=password');
     lines.push('LOOM_ADMIN_NAME=Admin');
+    lines.push('# Local media uploads for FileField / ImageField');
+    lines.push('LOOM_UPLOADS_DIR=./uploads');
     lines.push('');
   }
 

@@ -63,6 +63,9 @@ export class Company {
   @Prop()
   phone?: string;
 
+  @Prop()
+  logo?: string;
+
   @Prop({ default: true })
   active!: boolean;
 }
@@ -93,6 +96,10 @@ export class User {
 
   @Prop({ default: 0 })
   sessionVersion!: number;
+
+  /** Companies this user may switch into when tenancy is enabled */
+  @Prop({ type: [String], default: [] })
+  companyIds!: string[];
 
   @Prop({ type: Types.ObjectId, ref: 'Company' })
   companyId?: Types.ObjectId;
@@ -134,7 +141,7 @@ import { LoomModule } from '@nestweaver/loom';
   imports: [
     LoomModule.forRoot({
       basePath: '/admin',
-      title: '${adminTitle(options)}',
+      branding: { brandName: '${adminTitle(options)}' },
       resources: [],
     }),
   ],
@@ -267,6 +274,25 @@ function loomFactoryBody(options: ScaffoldOptions): string {
             role: 'admin',
           },
         },`;
+  const wave4Block = `branding: { brandName: '${title}' },
+        api: {
+          version: 'v1',
+          openapi: true,
+        },
+        securityHeaders: true,
+        storage: {
+          disk: 'local' as const,
+          root: process.env.LOOM_UPLOADS_DIR || './uploads',
+          publicUrlPrefix: '/admin/media',
+        },
+        audit: {
+          onAudit: (event) => {
+            // Persist or forward elsewhere in production
+            if (process.env.NODE_ENV !== 'production') {
+              console.info('[loom.audit]', event.action, event.resource, event.recordId ?? event.recordIds);
+            }
+          },
+        },`;
 
   switch (options.orm) {
     case 'typeorm':
@@ -274,36 +300,36 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         orm: 'typeorm' as const,
         dataSource,
         basePath: '/admin',
-        title: '${title}',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
+        ${wave4Block}
       })`;
     case 'prisma':
       return `(prisma: PrismaService) => ({
         orm: 'prisma' as const,
         dataSource: prisma,
         basePath: '/admin',
-        title: '${title}',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
+        ${wave4Block}
       })`;
     case 'drizzle':
       return `(db: unknown) => ({
         orm: 'drizzle' as const,
         dataSource: { db, schema },
         basePath: '/admin',
-        title: '${title}',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
+        ${wave4Block}
       })`;
     case 'mongoose':
       return `(connection: Connection) => ({
         orm: 'mongoose' as const,
         dataSource: connection,
         basePath: '/admin',
-        title: '${title}',
         resources: [${RESOURCE_LIST}],
         ${authBlock}
+        ${wave4Block}
       })`;
     default:
       return '() => ({ resources: [] })';
