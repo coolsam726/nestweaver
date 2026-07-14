@@ -73,7 +73,7 @@ function adminDeps(options: ScaffoldOptions): Deps {
   }
   return {
     ...ADMIN_BASE,
-    '@nestweaver/loom': resolveLoomDependency(options.targetDir).specifier,
+    '@nodeweaver/loom': resolveLoomDependency(options.targetDir).specifier,
   };
 }
 

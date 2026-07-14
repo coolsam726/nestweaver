@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { LoomAuthService, setResponseCookie } from '@nestweaver/loom';
-import type { LoomAuthUser } from '@nestweaver/loom';
+import { LoomAuthService, setResponseCookie } from '@nodeweaver/loom';
+import type { LoomAuthUser } from '@nodeweaver/loom';
 
 type HttpRequest = {
   url?: string;

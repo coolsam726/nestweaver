@@ -1,4 +1,4 @@
-# nestweaver
+# nodeweaver
 
 **NestJS fullstack starter + declarative admin.**
 
@@ -6,28 +6,28 @@ Scaffold a NestJS monorepo with your choice of frontend and **Loom** included by
 
 Supported frontends: **Nuxt 4**, **Angular**, **Vite + React / Vue / Svelte**, and **Nest + Handlebars + Alpine** (full stack — no separate `apps/web`; public UI shares Loom sessions and branding).
 
-## Why Nestweaver
+## Why Nodeweaver
 
-| Without Nestweaver | With Nestweaver |
+| Without Nodeweaver | With Nodeweaver |
 |--------------------|-----------------|
 | Glue Nest + SPA + Docker by hand | Interactive CLI scaffolds a working monorepo |
 | Roll your own admin CRUD | Loom: declarative resources, auth, company tenancy |
 | Separate “starter” vs “admin kit” stories | One stack: app API + `/admin` + JSON API |
 
-**Loom** is the flagship library (`@nestweaver/loom`). **create-nestweaver** is how most people get a working app with Loom already configured.
+**Loom** is the flagship library (`@nodeweaver/loom`). **create-nodeweaver** is how most people get a working app with Loom already configured.
 
 ## Create a project
 
 **After publish** (from npm):
 
 ```bash
-npm create nestweaver@latest my-app
-pnpm create nestweaver my-app
-yarn create nestweaver my-app
-bun create nestweaver my-app
+npm create nodeweaver@latest my-app
+pnpm create nodeweaver my-app
+yarn create nodeweaver my-app
+bun create nodeweaver my-app
 ```
 
-> **Note:** `pnpm create nestweaver my-app` — `nestweaver` is the starter, `my-app` is your project folder.
+> **Note:** `pnpm create nodeweaver my-app` — `nodeweaver` is the starter, `my-app` is your project folder.
 > Do **not** run `pnpm create my-app` (that looks for a package named `create-my-app` on npm).
 
 **Local development** (from this repo, before publish):
@@ -40,7 +40,7 @@ pnpm run create my-app
 Use `.` as the directory name to scaffold into the current folder:
 
 ```bash
-npm create nestweaver@latest .
+npm create nodeweaver@latest .
 ```
 
 You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, and Nuxt/Angular render mode (SSR/SPA) when applicable. **Loom** (`/admin`, auth/RBAC, JSON API) is always included.
@@ -77,7 +77,7 @@ To host under a subdirectory (e.g. `https://example.net/my-app/`), set `APP_BASE
 pnpm install
 pnpm build
 
-# local scaffold (same prompts as npm create nestweaver)
+# local scaffold (same prompts as npm create nodeweaver)
 pnpm run create my-app
 
 # equivalent
@@ -88,16 +88,16 @@ pnpm run create:weaver my-app
 
 ### One-time setup
 
-1. Create an [npm access token](https://www.npmjs.com/settings/~your-user/tokens) with **Publish** permission.
-2. Add it to the GitHub repository as secret **`NPM_TOKEN`**.
-3. On first release, publishing `@nestweaver/loom` creates the public **`@nestweaver`** scope on npm.
+1. Create the public npm organization **`nodeweaver`** (creates the `@nodeweaver` scope).
+2. Prefer [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) on each package for GitHub Actions (workflow: `publish.yml`). You do not need a write `NPM_TOKEN` for OIDC publishes.
+3. Optional: a read-only token only if CI must install private packages.
 
 ### Release flow
 
-1. Bump versions in `packages/loom/package.json`, `packages/nestweaver/package.json`, and `packages/create-nestweaver/package.json` (keep versions in sync).
+1. Bump versions in `packages/loom/package.json`, `packages/nodeweaver/package.json`, and `packages/create-nodeweaver/package.json` (keep versions in sync).
 2. Commit, push to `main`, and [create a GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release) for the tag (e.g. `v0.1.0` or `v1.0.0`).
 
-The **Publish** workflow runs on `release: published`, builds, smoke-tests the scaffolder, then publishes `@nestweaver/loom`, `nestweaver`, and `create-nestweaver`.
+The **Publish** workflow runs on `release: published`, builds, smoke-tests the scaffolder, then publishes `@nodeweaver/loom`, `nodeweaver`, and `create-nodeweaver`.
 
 ### Manual publish (dry run)
 
@@ -107,24 +107,24 @@ GitHub → Actions → **Publish** → **Run workflow** → enable **Dry run** t
 
 ```bash
 pnpm build
-pnpm --filter @nestweaver/loom publish --access public --no-git-checks
-pnpm --filter nestweaver publish --no-git-checks
-pnpm --filter create-nestweaver publish --no-git-checks
+pnpm --filter @nodeweaver/loom publish --access public --no-git-checks
+pnpm --filter nodeweaver publish --no-git-checks
+pnpm --filter create-nodeweaver publish --no-git-checks
 ```
 
-Users then run `npm create nestweaver@latest`.
+Users then run `npm create nodeweaver@latest`.
 
 ## Packages
 
 | Package | Role |
 |---------|------|
-| [`@nestweaver/loom`](packages/loom/README.md) | Declarative NestJS admin (`/admin`): resources, RBAC, tenancy, media, JSON API |
-| `create-nestweaver` | npm entry for `npm create nestweaver` |
-| [`nestweaver`](packages/nestweaver/README.md) | Core scaffolder, templates, and `weaver` CLI |
+| [`@nodeweaver/loom`](packages/loom/README.md) | Declarative NestJS admin (`/admin`): resources, RBAC, tenancy, media, JSON API |
+| `create-nodeweaver` | npm entry for `npm create nodeweaver` |
+| [`nodeweaver`](packages/nodeweaver/README.md) | Core scaffolder, templates, and `nodeweaver` / `weaver` CLI |
 
 Scaffolds always include Loom with ORM-matched Role/Permission models, seed auth, local media storage, audit hooks, and an OpenAPI document under `/api/loom/v1`. See the [Loom README](packages/loom/README.md) for the full feature guide.
 
-**Loom 1.0:** [readiness checklist](docs/LOOM_1_0.md) · [roadmap](docs/LOOM_ROADMAP.md) · [milestone](https://github.com/coolsam726/nestweaver/milestone/1)
+**Loom 1.0:** [readiness checklist](docs/LOOM_1_0.md) · [roadmap](docs/LOOM_ROADMAP.md) · [milestone](https://github.com/coolsam726/nodeweaver/milestone/1)
 
 ## License
 

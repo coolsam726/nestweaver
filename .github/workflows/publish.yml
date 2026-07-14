@@ -47,20 +47,20 @@ jobs:
       - name: Test scaffold
         run: pnpm test
 
-      - name: Pack @nestweaver/loom (validate)
-        run: pnpm --filter @nestweaver/loom pack --pack-destination /tmp/npm-pack
+      - name: Pack @nodeweaver/loom (validate)
+        run: pnpm --filter @nodeweaver/loom pack --pack-destination /tmp/npm-pack
 
-      - name: Publish @nestweaver/loom
-        run: pnpm --filter @nestweaver/loom publish $PUBLISH_FLAGS $DRY_RUN
+      - name: Publish @nodeweaver/loom
+        run: pnpm --filter @nodeweaver/loom publish $PUBLISH_FLAGS $DRY_RUN
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish nestweaver
-        run: pnpm --filter nestweaver publish $PUBLISH_FLAGS $DRY_RUN
+      - name: Publish nodeweaver
+        run: pnpm --filter nodeweaver publish $PUBLISH_FLAGS $DRY_RUN
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish create-nestweaver
-        run: pnpm --filter create-nestweaver publish $PUBLISH_FLAGS $DRY_RUN
+      - name: Publish create-nodeweaver
+        run: pnpm --filter create-nodeweaver publish $PUBLISH_FLAGS $DRY_RUN
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

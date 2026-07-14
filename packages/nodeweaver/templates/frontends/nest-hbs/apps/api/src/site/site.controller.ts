@@ -15,7 +15,7 @@ import {
   loomAlpineJsPath,
   loomUiJsPath,
   setResponseCookies,
-} from '@nestweaver/loom';
+} from '@nodeweaver/loom';
 import {
   appBaseFromEnv,
   joinAppPath,

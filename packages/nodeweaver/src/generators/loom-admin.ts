@@ -19,7 +19,7 @@ export function generateCompanyResource(options: ScaffoldOptions): string | null
   const modelImport = modelImportForOrm(options, 'Company');
   const modelRef = modelRefForOrm(options, 'Company');
 
-  return `${modelImport}import { CompanyResourceBase } from '@nestweaver/loom/base';
+  return `${modelImport}import { CompanyResourceBase } from '@nodeweaver/loom/base';
 
 export class CompanyResource extends CompanyResourceBase {
   static override model = ${modelRef};
@@ -35,7 +35,7 @@ export function generateUserResource(options: ScaffoldOptions): string | null {
   const modelImport = modelImportForOrm(options, 'User');
   const modelRef = modelRefForOrm(options, 'User');
 
-  return `${modelImport}import { UserResourceBase } from '@nestweaver/loom/base';
+  return `${modelImport}import { UserResourceBase } from '@nodeweaver/loom/base';
 
 export class UserResource extends UserResourceBase {
   static override model = ${modelRef};
@@ -135,7 +135,7 @@ export class DatabaseModule {}
 export function generateLoomAdminModule(options: ScaffoldOptions): string {
   if (options.orm === 'none') {
     return `import { Module } from '@nestjs/common';
-import { LoomModule } from '@nestweaver/loom';
+import { LoomModule } from '@nodeweaver/loom';
 
 @Module({
   imports: [
@@ -161,7 +161,7 @@ import { PermissionResource } from './permission.resource';`;
 
   return `${extraImports}
 import { Module } from '@nestjs/common';
-import { LoomModule } from '@nestweaver/loom';
+import { LoomModule } from '@nodeweaver/loom';
 ${resourcesImport}
 
 @Module({
@@ -375,7 +375,7 @@ export function generateLoomAdminFiles(
     files.push(
       [
         `${adminDir}/role.resource.ts`,
-        `${roleImport}import { RoleResourceBase } from '@nestweaver/loom/base';
+        `${roleImport}import { RoleResourceBase } from '@nodeweaver/loom/base';
 
 export class RoleResource extends RoleResourceBase {
   static override model = ${roleRef};
@@ -384,7 +384,7 @@ export class RoleResource extends RoleResourceBase {
       ],
       [
         `${adminDir}/permission.resource.ts`,
-        `${permissionImport}import { PermissionResourceBase } from '@nestweaver/loom/base';
+        `${permissionImport}import { PermissionResourceBase } from '@nodeweaver/loom/base';
 
 export class PermissionResource extends PermissionResourceBase {
   static override model = ${permissionRef};

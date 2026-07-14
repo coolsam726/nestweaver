@@ -1,10 +1,10 @@
 {
-  "name": "create-nestweaver",
+  "name": "create-nodeweaver",
   "version": "0.1.0",
-  "description": "Create a NestJS fullstack monorepo with Loom admin via nestweaver",
+  "description": "Create a NestJS fullstack monorepo with Loom admin via nodeweaver",
   "type": "module",
   "bin": {
-    "create-nestweaver": "./dist/index.js"
+    "create-nodeweaver": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -22,7 +22,7 @@
     "access": "public"
   },
   "dependencies": {
-    "nestweaver": "workspace:*"
+    "nodeweaver": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
