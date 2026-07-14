@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -10,6 +10,8 @@ const NODEWEAVER_PACKAGE_DIR = join(
 
 export interface LoomDependencyResolution {
   specifier: string;
+  /** True when Loom will be copied into the scaffold as packages/loom. */
+  vendored: boolean;
 }
 
 const LOOM_PACKAGE_FILES = ['dist', 'views', 'assets', 'package.json'] as const;
@@ -17,26 +19,42 @@ const LOOM_PACKAGE_FILES = ['dist', 'views', 'assets', 'package.json'] as const;
 export function resolveLoomDependency(targetDir: string): LoomDependencyResolution {
   const fromEnv = process.env.NODEWEAVER_LOOM_DEP?.trim();
   if (fromEnv) {
-    return { specifier: fromEnv };
+    return { specifier: fromEnv, vendored: false };
   }
 
   if (
     existsSync(join(targetDir, 'packages', 'loom', 'package.json')) ||
     findSourceLoomPackage(targetDir)
   ) {
-    return { specifier: 'workspace:*' };
+    return { specifier: 'workspace:*', vendored: true };
   }
 
-  return { specifier: '^0.1.0' };
+  return { specifier: publishedLoomSpecifier(), vendored: false };
 }
 
-/** Copy a built @nodeweaver/loom admin package into the scaffold project for Docker/local self-containment. */
-export function vendorLoomPackage(targetDir: string): void {
+function publishedLoomSpecifier(): string {
+  // Prefer the monorepo Loom version when developing; published CLI has no sibling package.
+  const sibling = join(NODEWEAVER_PACKAGE_DIR, '..', 'loom', 'package.json');
+  try {
+    if (existsSync(sibling)) {
+      const pkg = JSON.parse(readFileSync(sibling, 'utf8')) as { version?: string };
+      if (pkg.version) return `^${pkg.version}`;
+    }
+  } catch {
+    /* fall through */
+  }
+  return '^0.1.0';
+}
+
+/**
+ * Copy a built @nodeweaver/loom package into the scaffold for Docker/local self-containment.
+ * Only works when scaffolding from this monorepo (or another tree that contains packages/loom).
+ * Returns false when Loom should be installed from npm instead.
+ */
+export function vendorLoomPackage(targetDir: string): boolean {
   const sourceDir = findSourceLoomPackage(targetDir);
   if (!sourceDir) {
-    throw new Error(
-      'Cannot vendor @nodeweaver/loom: source package not found. Set NODEWEAVER_LOOM_DEP or run from the nodeweaver monorepo.',
-    );
+    return false;
   }
 
   ensureLoomBuilt(sourceDir);
@@ -51,6 +69,8 @@ export function vendorLoomPackage(targetDir: string): void {
     }
     cpSync(from, join(destDir, item), { recursive: true });
   }
+
+  return true;
 }
 
 function ensureLoomBuilt(loomDir: string): void {

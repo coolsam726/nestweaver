@@ -131,5 +131,8 @@ assert.equal(rootPkg.scripts.build, 'pnpm --filter api build');
 const dockerfile = readFileSync(join(base.targetDir, 'Dockerfile'), 'utf8');
 assert.doesNotMatch(dockerfile, /apps\/web/);
 assert.match(dockerfile, /apps\/api\/views/);
+// Monorepo scaffolds vendor Loom into packages/loom for Docker.
+assert.match(dockerfile, /packages\/loom/);
+assert.equal(existsSync(join(base.targetDir, 'packages/loom/package.json')), true);
 
 console.log('nest-hbs scaffold checks passed');

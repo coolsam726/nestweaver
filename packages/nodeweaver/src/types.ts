@@ -43,4 +43,6 @@ export interface TemplateContext extends ScaffoldOptions {
   hasInfraServices: boolean;
   nestPort: number;
   webDevPort: number;
+  /** When true, Dockerfile copies packages/loom (monorepo vendor). Otherwise Loom comes from npm. */
+  vendoredLoom: boolean;
 }
