@@ -1,6 +1,6 @@
-# @nestweaver/loom
+# @nodeweaver/loom
 
-**Declarative admin for NestJS** — the flagship of [nestweaver](https://github.com/coolsam726/nestweaver): fullstack scaffolding plus a production-minded admin you drop into the same app.
+**Declarative admin for NestJS** — the flagship of [nodeweaver](https://github.com/coolsam726/nodeweaver): fullstack scaffolding plus a production-minded admin you drop into the same app.
 
 Loom turns your models into a full CRUD admin at `/admin`: Filament-style resources, list and kanban views, modal forms, relation widgets, cookie auth, string-based RBAC, company tenancy, media fields, audit hooks, and a versioned JSON API. It ships ORM adapters for **TypeORM**, **Prisma**, **Drizzle**, and **Mongoose**.
 
@@ -18,9 +18,9 @@ Loom turns your models into a full CRUD admin at `/admin`: Filament-style resour
 
 | Import | Contents |
 |--------|----------|
-| `@nestweaver/loom` | Resources, fields, auth helpers, adapters, branding |
-| `@nestweaver/loom/base` | `CompanyResourceBase`, `UserResourceBase`, `RoleResourceBase`, `PermissionResourceBase` |
-| `@nestweaver/loom/nest` | Guards, decorators, API controller factory, filters |
+| `@nodeweaver/loom` | Resources, fields, auth helpers, adapters, branding |
+| `@nodeweaver/loom/base` | `CompanyResourceBase`, `UserResourceBase`, `RoleResourceBase`, `PermissionResourceBase` |
+| `@nodeweaver/loom/nest` | Guards, decorators, API controller factory, filters |
 
 ---
 
@@ -42,7 +42,7 @@ Loom turns your models into a full CRUD admin at `/admin`: Filament-style resour
 14. [ORM adapters & ACL stores](#orm-adapters--acl-stores)
 15. [Base resources](#base-resources)
 16. [Branding & shell](#branding--shell)
-17. [Nestweaver scaffolding](#nestweaver-scaffolding)
+17. [Nodeweaver scaffolding](#nodeweaver-scaffolding)
 18. [Development](#development)
 
 ---
@@ -50,7 +50,7 @@ Loom turns your models into a full CRUD admin at `/admin`: Filament-style resour
 ## Install
 
 ```bash
-pnpm add @nestweaver/loom handlebars
+pnpm add @nodeweaver/loom handlebars
 ```
 
 Install the ORM peer you use:
@@ -70,8 +70,8 @@ Also ensure `@nestjs/common`, `@nestjs/core`, `reflect-metadata`, and `rxjs` are
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { LoomModule } from '@nestweaver/loom';
-import { CompanyResourceBase } from '@nestweaver/loom/base';
+import { LoomModule } from '@nodeweaver/loom';
+import { CompanyResourceBase } from '@nodeweaver/loom/base';
 import { Company } from './database/company.entity.js';
 
 export class CompanyResource extends CompanyResourceBase {
@@ -230,7 +230,7 @@ import {
   TextColumn,
   BooleanField,
   BooleanColumn,
-} from '@nestweaver/loom';
+} from '@nodeweaver/loom';
 
 export class TagResource extends Resource {
   static override slug = 'tags';
@@ -270,7 +270,7 @@ export class TagResource extends Resource {
 ### Config helpers
 
 ```typescript
-import { defineResource, extendResource } from '@nestweaver/loom';
+import { defineResource, extendResource } from '@nodeweaver/loom';
 
 const TagResource = defineResource({
   slug: 'tags',
@@ -530,7 +530,7 @@ Built-ins: `CreateAction`, `ViewAction`, `EditAction`, `DeleteAction`, plus help
 **Bulk delete** is added automatically when the user `canDelete` and you did not already declare a bulk `delete` action — you do not need to list `bulkDeleteAction()` unless you want to customize its label/confirm.
 
 ```typescript
-import { Action, CreateAction, ViewAction, EditAction, DeleteAction, exportAction } from '@nestweaver/loom';
+import { Action, CreateAction, ViewAction, EditAction, DeleteAction, exportAction } from '@nodeweaver/loom';
 
 static override permissions() {
   // Seeded as deals:activate, deals:deactivate (admins still get *)
@@ -720,7 +720,7 @@ Login, logout, and `{basePath}/assets/*` are public. Everything else under the a
 ### Runtime helpers
 
 ```typescript
-import { currentLoomUser, runWithLoomAuth } from '@nestweaver/loom';
+import { currentLoomUser, runWithLoomAuth } from '@nodeweaver/loom';
 ```
 
 ### Nest decorators & guards
@@ -732,7 +732,7 @@ import {
   LoomAuthContextInterceptor,
   RequirePermission,
   LoomPublic,
-} from '@nestweaver/loom/nest';
+} from '@nodeweaver/loom/nest';
 
 @UseInterceptors(LoomAuthContextInterceptor)
 @UseGuards(LoomAbilityGuard)
@@ -816,7 +816,7 @@ If `editor` / `viewer` already have permission ids, sync **keeps** them (does no
 ### Checks
 
 ```typescript
-import { can, canAny, assertCan, userHasPermission, isAdmin } from '@nestweaver/loom';
+import { can, canAny, assertCan, userHasPermission, isAdmin } from '@nodeweaver/loom';
 
 can(user, 'deals:export');          // also honors deals:* and *
 canAny(user, ['orders:edit', 'orders:*']);
@@ -838,7 +838,7 @@ Users store role ids in `roleIds` (configurable via `roleIdsField`). On each req
 Record-level rules on top of string permissions.
 
 ```typescript
-import { Policy, ownedBy, can } from '@nestweaver/loom';
+import { Policy, ownedBy, can } from '@nodeweaver/loom';
 
 export class OrderPolicy extends Policy {
   static ownerField = 'createdById';
@@ -1014,7 +1014,7 @@ Wire custom Nest controllers with the same session + ACL:
 | `mongoose` | Mongoose `Connection` | Schema class, or string name for runtime models |
 
 ```typescript
-import { createLoomAdapter, createNoopAdapter } from '@nestweaver/loom';
+import { createLoomAdapter, createNoopAdapter } from '@nodeweaver/loom';
 
 LoomModule.forRoot({
   adapter: createLoomAdapter('prisma', prisma),
@@ -1051,7 +1051,7 @@ Override the store by providing `LOOM_RBAC` if needed.
 
 ## Base resources
 
-From `@nestweaver/loom/base`:
+From `@nodeweaver/loom/base`:
 
 | Class | Slug | Nav | Notes |
 |-------|------|-----|-------|
@@ -1066,7 +1066,7 @@ import {
   UserResourceBase,
   RoleResourceBase,
   PermissionResourceBase,
-} from '@nestweaver/loom/base';
+} from '@nodeweaver/loom/base';
 
 export class UserResource extends UserResourceBase {
   static override model = User;
@@ -1158,7 +1158,7 @@ currentCompanyId: 'acme',
 
 ### ACL schema migrations
 
-Nestweaver scaffolds ship migrations so production can create ACL tables without ORM auto-sync:
+Nodeweaver scaffolds ship migrations so production can create ACL tables without ORM auto-sync:
 
 | ORM | Dev | Production |
 |-----|-----|------------|
@@ -1170,9 +1170,9 @@ Nestweaver scaffolds ship migrations so production can create ACL tables without
 Upgrading an existing app: add `LoomRole` / `LoomPermission` (or Drizzle `loomRoles` / `loomPermissions`) then run the migrate script for your ORM. Missing Drizzle ACL schema keys fail closed instead of falling back to in-memory RBAC.
 ---
 
-## Nestweaver scaffolding
+## Nodeweaver scaffolding
 
-`create-nestweaver` / `weaver` always scaffolds Loom. The generated app includes:
+`create-nodeweaver` / `nodeweaver` always scaffolds Loom. The generated app includes:
 
 ```
 apps/api/src/admin/
@@ -1199,17 +1199,17 @@ Plus ORM-specific ACL models:
 ## Development
 
 ```bash
-pnpm --filter @nestweaver/loom build:css
-pnpm --filter @nestweaver/loom build
-pnpm --filter @nestweaver/loom test
-pnpm --filter @nestweaver/loom dev:css   # watch Tailwind
+pnpm --filter @nodeweaver/loom build:css
+pnpm --filter @nodeweaver/loom build
+pnpm --filter @nodeweaver/loom test
+pnpm --filter @nodeweaver/loom dev:css   # watch Tailwind
 ```
 
 ## Roadmap
 
 Loom is currently **0.x / beta**. Production-readiness work is tracked in:
 
-- Milestone: [Loom 1.0 — production stable](https://github.com/coolsam726/nestweaver/milestone/1)
+- Milestone: [Loom 1.0 — production stable](https://github.com/coolsam726/nodeweaver/milestone/1)
 - Plan: [`docs/LOOM_ROADMAP.md`](../../docs/LOOM_ROADMAP.md)
 
 ---

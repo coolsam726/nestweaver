@@ -9,7 +9,7 @@ export interface ParsedCreateArgs {
   version: string | null;
 }
 
-const PACKAGE_SPECIFIER = /^(create-)?nestweaver(@.+)?$/i;
+const PACKAGE_SPECIFIER = /^(create-)?nodeweaver(@.+)?$/i;
 
 function isPackageSpecifier(arg: string): boolean {
   return PACKAGE_SPECIFIER.test(arg);

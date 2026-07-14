@@ -19,20 +19,21 @@ function readPackageVersion(): string {
 export function printBanner(): void {
   const version = readPackageVersion();
   console.log('');
-  console.log(`  weaver ${version}  ·  NestJS + frontend monorepo scaffolder`);
+  console.log(`  nodeweaver ${version}  ·  NestJS + frontend monorepo scaffolder`);
   console.log('');
 }
 
 export function printHelp(): void {
   printBanner();
   console.log(`Usage:
-  npm create nestweaver@latest [directory]
-  pnpm create nestweaver [directory]
-  yarn create nestweaver [directory]
-  bun create nestweaver [directory]
+  npm create nodeweaver@latest [directory]
+  pnpm create nodeweaver [directory]
+  yarn create nodeweaver [directory]
+  bun create nodeweaver [directory]
 
+  nodeweaver [directory]
+  nodeweaver create [directory]
   weaver [directory]
-  weaver create [directory]
 
 Arguments:
   directory          Project folder name, or "." for the current directory
@@ -50,6 +51,6 @@ You will be asked interactively:
   • HTTP adapter (Fastify or Express)
   • Nuxt render mode (SSR or SPA — when Nuxt is selected)
 
-Every scaffold includes Loom (@nestweaver/loom): /admin, auth/RBAC, and the versioned JSON API.
+Every scaffold includes Loom (@nodeweaver/loom): /admin, auth/RBAC, and the versioned JSON API.
 `);
 }

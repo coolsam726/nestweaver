@@ -121,7 +121,7 @@ export async function collectOptions(
     default: 'fastify',
   });
 
-  // Loom is always part of the Nestweaver stack (auth/RBAC/admin + JSON API).
+  // Loom is always part of the Nodeweaver stack (auth/RBAC/admin + JSON API).
   const admin = true;
 
   if (orm === 'none') {

@@ -3,7 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
-const NESTWEAVER_PACKAGE_DIR = join(
+const NODEWEAVER_PACKAGE_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
 );
@@ -15,7 +15,7 @@ export interface LoomDependencyResolution {
 const LOOM_PACKAGE_FILES = ['dist', 'views', 'assets', 'package.json'] as const;
 
 export function resolveLoomDependency(targetDir: string): LoomDependencyResolution {
-  const fromEnv = process.env.NESTWEAVER_LOOM_DEP?.trim();
+  const fromEnv = process.env.NODEWEAVER_LOOM_DEP?.trim();
   if (fromEnv) {
     return { specifier: fromEnv };
   }
@@ -30,12 +30,12 @@ export function resolveLoomDependency(targetDir: string): LoomDependencyResoluti
   return { specifier: '^0.1.0' };
 }
 
-/** Copy a built @nestweaver/loom admin package into the scaffold project for Docker/local self-containment. */
+/** Copy a built @nodeweaver/loom admin package into the scaffold project for Docker/local self-containment. */
 export function vendorLoomPackage(targetDir: string): void {
   const sourceDir = findSourceLoomPackage(targetDir);
   if (!sourceDir) {
     throw new Error(
-      'Cannot vendor @nestweaver/loom: source package not found. Set NESTWEAVER_LOOM_DEP or run from the nestweaver monorepo.',
+      'Cannot vendor @nodeweaver/loom: source package not found. Set NODEWEAVER_LOOM_DEP or run from the nodeweaver monorepo.',
     );
   }
 
@@ -47,7 +47,7 @@ export function vendorLoomPackage(targetDir: string): void {
   for (const item of LOOM_PACKAGE_FILES) {
     const from = join(sourceDir, item);
     if (!existsSync(from)) {
-      throw new Error(`Cannot vendor @nestweaver/loom: missing ${from}`);
+      throw new Error(`Cannot vendor @nodeweaver/loom: missing ${from}`);
     }
     cpSync(from, join(destDir, item), { recursive: true });
   }
@@ -63,7 +63,7 @@ function ensureLoomBuilt(loomDir: string): void {
 }
 
 function monorepoLoomPackage(): string | null {
-  const candidate = join(NESTWEAVER_PACKAGE_DIR, '..', 'loom');
+  const candidate = join(NODEWEAVER_PACKAGE_DIR, '..', 'loom');
   if (existsSync(join(candidate, 'package.json'))) {
     return candidate;
   }

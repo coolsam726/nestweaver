@@ -1,25 +1,25 @@
-# weaver CLI
+# nodeweaver CLI
 
-Core scaffolder used by `create-nestweaver` and the `weaver` binary.
+Core scaffolder used by `create-nodeweaver` and the `nodeweaver` / `weaver` binaries.
 
-Nestweaver scaffolds **NestJS + frontend** monorepos with **[Loom](../loom/README.md)** included by default — declarative admin, auth/RBAC, tenancy, media, and a versioned JSON API in the same app.
+Nodeweaver scaffolds **NestJS + frontend** monorepos with **[Loom](../loom/README.md)** included by default — declarative admin, auth/RBAC, tenancy, media, and a versioned JSON API in the same app.
 
 Frontend choices include Nuxt, Angular, Vite (React/Vue/Svelte), and **Nest + Handlebars + Alpine** for a full-stack app that reuses Loom sessions, CSRF, theme, and branding with an app-owned public layout (no `apps/web`).
 
 ## Usage
 
 ```bash
-npm create nestweaver@latest my-app
+npm create nodeweaver@latest my-app
 
 # from this monorepo
-pnpm --filter nestweaver dev my-app
-node packages/nestweaver/dist/cli.js my-app
+pnpm --filter nodeweaver dev my-app
+node packages/nodeweaver/dist/cli.js my-app
 ```
 
 ## Programmatic API
 
 ```ts
-import { runCreate, collectOptions, scaffoldProject } from 'nestweaver';
+import { runCreate, collectOptions, scaffoldProject } from 'nodeweaver';
 ```
 
 ## Admin panel (Loom)
@@ -28,7 +28,7 @@ Every scaffold includes a full Loom setup:
 
 - `apps/api/src/admin/loom-admin.module.ts` — `LoomModule.forRootAsync` with sync `basePath` / `api` + ORM inject + auth
 
-- Resources: Company, User, Role, Permission (extending `@nestweaver/loom/base`)
+- Resources: Company, User, Role, Permission (extending `@nodeweaver/loom/base`)
 - ACL models matched to the selected ORM:
   - **TypeORM** — `LoomRole` / `LoomPermission` entities registered in `DatabaseModule`, plus `migrations/` + `data-source.ts` (`db:migrate`; prod `migrationsRun`)
   - **Prisma** — `LoomRole` / `LoomPermission` in `schema.prisma` + initial `prisma/migrations` (`db:migrate` / `db:push`)
@@ -63,4 +63,4 @@ When this frontend is selected:
 
 For production databases, run `pnpm --filter api db:migrate` (TypeORM also applies migrations automatically when `NODE_ENV=production`).
 
-Full feature docs: [`@nestweaver/loom` README](../loom/README.md) · [Loom 1.0 readiness](../../docs/LOOM_1_0.md).
+Full feature docs: [`@nodeweaver/loom` README](../loom/README.md) · [Loom 1.0 readiness](../../docs/LOOM_1_0.md).

@@ -51,7 +51,7 @@ if (existsSync(base.targetDir)) {
   rmSync(base.targetDir, { recursive: true, force: true });
 }
 
-process.env.NESTWEAVER_SKIP_INSTALL = '1';
+process.env.NODEWEAVER_SKIP_INSTALL = '1';
 await scaffoldProject(base);
 
 assert.equal(existsSync(join(base.targetDir, 'apps/web')), false);

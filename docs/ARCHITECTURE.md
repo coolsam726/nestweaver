@@ -1,6 +1,6 @@
 # Architecture
 
-Reference for how NestJS and the chosen frontend share HTTP in a Nestweaver scaffold.
+Reference for how NestJS and the chosen frontend share HTTP in a Nodeweaver scaffold.
 
 ## Nest + Handlebars + Alpine (`nest-hbs`)
 

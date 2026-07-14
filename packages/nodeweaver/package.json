@@ -1,9 +1,10 @@
 {
-  "name": "nestweaver",
+  "name": "nodeweaver",
   "version": "0.1.0",
   "description": "Scaffold NestJS fullstack monorepos with Loom declarative admin",
   "type": "module",
   "bin": {
+    "nodeweaver": "./dist/cli.js",
     "weaver": "./dist/cli.js"
   },
   "exports": {

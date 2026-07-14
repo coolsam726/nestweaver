@@ -56,7 +56,7 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<void> {
 
   writeGeneratedFiles(options, context);
 
-  if (process.env.NESTWEAVER_SKIP_INSTALL !== '1') {
+  if (process.env.NODEWEAVER_SKIP_INSTALL !== '1') {
     console.log('Installing dependencies...');
     execSync('pnpm install', { cwd: targetDir, stdio: 'inherit' });
   }
