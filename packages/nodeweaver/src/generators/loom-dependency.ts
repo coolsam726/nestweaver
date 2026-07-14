@@ -33,17 +33,15 @@ export function resolveLoomDependency(targetDir: string): LoomDependencyResoluti
 }
 
 function publishedLoomSpecifier(): string {
-  // Prefer the monorepo Loom version when developing; published CLI has no sibling package.
-  const sibling = join(NODEWEAVER_PACKAGE_DIR, '..', 'loom', 'package.json');
+  // Packages are versioned in lockstep; use this package's version for the caret range.
   try {
-    if (existsSync(sibling)) {
-      const pkg = JSON.parse(readFileSync(sibling, 'utf8')) as { version?: string };
-      if (pkg.version) return `^${pkg.version}`;
-    }
+    const pkg = JSON.parse(
+      readFileSync(join(NODEWEAVER_PACKAGE_DIR, 'package.json'), 'utf8'),
+    ) as { version?: string };
+    return `^${pkg.version ?? '0.1.1'}`;
   } catch {
-    /* fall through */
+    return '^0.1.1';
   }
-  return '^0.1.0';
 }
 
 /**
