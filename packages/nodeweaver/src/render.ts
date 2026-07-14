@@ -11,6 +11,7 @@ import {
 import { needsDockerServices } from './generators/docker-compose.js';
 import type { TemplateContext } from './types.js';
 import { dockerInfraServiceNames } from './generators/docker-compose.js';
+import { findSourceLoomPackage } from './generators/loom-dependency.js';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 
@@ -53,6 +54,8 @@ export function toContext(
     webDevPort: WEB_DEV_DEFAULT_PORT,
     admin: options.admin,
     orm: options.orm,
+    vendoredLoom:
+      options.admin && Boolean(findSourceLoomPackage(options.targetDir)),
   } as TemplateContext & {
     admin: boolean;
     orm: string;

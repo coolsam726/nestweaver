@@ -50,8 +50,12 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<void> {
   );
   applyFeatures(options, context);
 
-  if (options.admin) {
-    vendorLoomPackage(options.targetDir);
+  if (options.admin && context.vendoredLoom) {
+    const vendored = vendorLoomPackage(options.targetDir);
+    if (!vendored) {
+      // Context expected a monorepo copy; fall back to npm dependency.
+      context.vendoredLoom = false;
+    }
   }
 
   writeGeneratedFiles(options, context);
