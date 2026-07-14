@@ -1,6 +1,6 @@
 {
   "name": "@nodeweaver/loom",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Loom — declarative NestJS admin: resources, RBAC, tenancy, media, and JSON API (Handlebars + Tailwind + Alpine).",
   "keywords": [
     "nodeweaver",
@@ -92,7 +92,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coolsam726/nodeweaver.git",
+    "url": "https://github.com/coolsam726/nodeweaver.git",
     "directory": "packages/loom"
   },
   "publishConfig": {
