@@ -6,7 +6,9 @@ FROM base AS dev
 RUN apk add --no-cache python3 make g++ curl su-exec
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/api/package.json ./apps/api/
+{{#if hasWebApp}}
 COPY apps/web/package.json ./apps/web/
+{{/if}}
 COPY packages/shared/package.json ./packages/shared/
 {{#if admin}}
 COPY packages/loom/package.json ./packages/loom/
@@ -18,14 +20,20 @@ RUN pnpm install --frozen-lockfile
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENV CI=true
+{{#if hasWebApp}}
 EXPOSE {{nestPort}} {{webDevPort}}
+{{else}}
+EXPOSE {{nestPort}}
+{{/if}}
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["pnpm", "dev"]
 
 FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
+{{#if hasWebApp}}
 COPY apps/web/package.json ./apps/web/
+{{/if}}
 COPY packages/shared/package.json ./packages/shared/
 {{#if admin}}
 COPY packages/loom/package.json ./packages/loom/
@@ -38,7 +46,9 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+{{#if hasWebApp}}
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+{{/if}}
 COPY . .
 RUN pnpm build
 
@@ -49,10 +59,15 @@ WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
+{{#if isNestHbs}}
+COPY --from=build /app/apps/api/views ./apps/api/views
+{{/if}}
+{{#if hasWebApp}}
 {{#if isNuxt}}
 COPY --from=build /app/apps/web/.output ./apps/web/.output
 {{else}}
 COPY --from=build /app/apps/web/dist ./apps/web/dist
+{{/if}}
 {{/if}}
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules

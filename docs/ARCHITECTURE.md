@@ -1,6 +1,38 @@
 # Architecture
 
-Reference for how NestJS and Nuxt 4 share a single HTTP port in this starter kit.
+Reference for how NestJS and the chosen frontend share HTTP in a Nestweaver scaffold.
+
+## Nest + Handlebars + Alpine (`nest-hbs`)
+
+When scaffolding with the full-stack Nest frontend, there is **no** `apps/web`. Nest serves:
+
+| Path | Handler |
+|------|---------|
+| `/`, `/app` | App-owned `SiteModule` (Handlebars layouts) |
+| `/login`, `/logout`, `/forgot-password`, `/reset-password` | Loom site-wide auth (outside `/admin`) |
+| `/assets/*` | Shared Loom CSS/JS/branding for the public site |
+| `/admin/*` | Loom admin |
+| `/api/*` | Nest API (+ Loom JSON API) |
+
+Public and admin UIs share `loom_session`, CSRF, `loom-theme`, and branding. Only the layout differs.
+
+### Subpath hosting (`APP_BASE_PATH`)
+
+Set `APP_BASE_PATH=/my-app` so Nest owns the full prefix (proxy must **not** strip it):
+
+| Surface | Root | Under `/my-app` |
+|---------|------|-----------------|
+| Home / nest-hbs | `/` | `/my-app` |
+| Auth | `/login` | `/my-app/login` |
+| Admin | `/admin` | `/my-app/admin` |
+| API | `/api/...` | `/my-app/api/...` |
+| Session cookie | `Path=/` | `Path=/my-app` |
+
+Example reverse proxy (Caddy / nginx style): forward `https://example.net/my-app/*` → Nest `:4000/my-app/*` (keep the `/my-app` path). Leave `APP_BASE_PATH` empty for domain-root hosting. SPA/SSR scaffolds use the same env for Nuxt `app.baseURL`, Vite `base`, and Angular `--base-href`.
+
+## SPA / SSR frontends (Nuxt, Angular, Vite)
+
+Reference for how NestJS and Nuxt 4 (or other `apps/web` stacks) share a single HTTP port.
 
 ## Overview
 
@@ -100,9 +132,11 @@ In dev, Nuxt also proxies `/api/*` to Nest so port `:3001` works for client-side
 |----------|---------|---------|
 | `PORT` | `3000` | Nest listen port |
 | `NODE_ENV` | — | `production` enables Nuxt listener |
+| `APP_BASE_PATH` | _(empty)_ | Optional mount prefix (`/my-app`); Nest owns the full path |
 | `ENABLE_WEB_PROXY` | — | `true` in api dev script |
 | `WEB_DEV_URL` | `http://127.0.0.1:3001` | Dev proxy target |
 | `API_BASE_SERVER` | `http://127.0.0.1:3000/api` | Nuxt SSR → Nest API |
+| `LOOM_BASE_PATH` | `{APP_BASE_PATH}/admin` | Admin URL; override only if needed |
 
 See `.env.example` for a copy-paste template.
 

@@ -3,11 +3,22 @@ import type { InjectionToken } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { createNoopAdapter, createLoomAdapter, type LoomAdapter } from '../adapters/adapter.js';
 import { assertLoomDeprecations, assertLoomProductionAuth } from '../core/assert-options.js';
+import {
+  defaultAdminBasePath,
+  defaultCookiePath,
+  joinAppPath,
+  nestControllerPath,
+  normalizeAppBasePath,
+} from '../core/app-path.js';
 import { ResourceRegistry } from '../core/registry.js';
 import { createLoomRbacStore, createNoopRbacStore, LOOM_RBAC } from '../core/rbac-store.js';
 import { resolveStorageAdapter } from '../core/storage.js';
 import type { LoomModuleOptions } from '../core/types.js';
 import { LOOM_ADAPTER, LOOM_OPTIONS, LOOM_REGISTRY, LOOM_STORAGE } from '../core/types.js';
+import {
+  createLoomAuthController,
+  createLoomAuthLegacyRedirectController,
+} from './loom-auth.controller.js';
 import { createLoomController } from './loom.controller.js';
 import { createLoomApiController } from './loom-api.controller.js';
 import { LoomService } from './loom.service.js';
@@ -42,35 +53,85 @@ function resolveApiPrefix(options: LoomModuleOptions): string | null {
   const api = options.api;
   if (api === false) return null;
   if (api && typeof api === 'object' && api.enabled === false) return null;
+
+  const appBase = normalizeAppBasePath(options.appBasePath);
+  let relative = 'api/loom';
+
   if (api && typeof api === 'object' && api.prefix) {
-    return api.prefix.replace(/^\//, '').replace(/\/$/, '') || 'api/loom';
-  }
-  if (api && typeof api === 'object' && api.version) {
+    const raw = api.prefix.replace(/^\//, '').replace(/\/$/, '') || 'api/loom';
+    const appCtrl = nestControllerPath(appBase || '/');
+    if (appCtrl && (raw === appCtrl || raw.startsWith(`${appCtrl}/`))) {
+      return raw;
+    }
+    relative = raw;
+  } else if (api && typeof api === 'object' && api.version) {
     const version = api.version.replace(/^\//, '').replace(/\/$/, '');
-    return version ? `api/loom/${version}` : 'api/loom';
+    relative = version ? `api/loom/${version}` : 'api/loom';
   }
-  return 'api/loom';
+
+  return nestControllerPath(joinAppPath(appBase, relative));
 }
 
 function resolveStorage(options: LoomModuleOptions) {
   return resolveStorageAdapter(options.storage);
 }
 
+function resolveAdminBasePath(options: LoomModuleOptions): string {
+  const appBase = normalizeAppBasePath(options.appBasePath);
+  if (!options.basePath) {
+    return defaultAdminBasePath(appBase);
+  }
+  const explicit = joinAppPath('', String(options.basePath).replace(/^\//, ''));
+  // joinAppPath('', 'admin') => '/admin'; joinAppPath('', 'my-app/admin') => '/my-app/admin'
+  const normalizedExplicit = explicit.startsWith('/')
+    ? explicit
+    : joinAppPath('', explicit);
+  if (!appBase) {
+    return normalizedExplicit === '/' ? '/admin' : normalizedExplicit;
+  }
+  if (normalizedExplicit === appBase || normalizedExplicit.startsWith(`${appBase}/`)) {
+    return normalizedExplicit;
+  }
+  return joinAppPath(appBase, normalizedExplicit.replace(/^\//, ''));
+}
+
 function normalizeOptions(options: LoomModuleOptions): LoomModuleOptions {
   assertLoomProductionAuth(options);
   assertLoomDeprecations(options);
-  return options;
+
+  const appBasePath = normalizeAppBasePath(options.appBasePath);
+  const basePath = resolveAdminBasePath({ ...options, appBasePath });
+  const cookiePath = defaultCookiePath(appBasePath);
+  const auth = options.auth
+    ? {
+        ...options.auth,
+        cookiePath: options.auth.cookiePath ?? cookiePath,
+      }
+    : options.auth;
+
+  return {
+    ...options,
+    appBasePath: appBasePath || undefined,
+    basePath,
+    auth,
+  };
 }
 
 function buildLoomModule(
   options: LoomModuleOptions,
   asyncProviders: Provider[],
 ): DynamicModule {
-  const basePath = options.basePath ?? '/admin';
+  const normalized = normalizeOptions(options);
+  const appBase = normalizeAppBasePath(normalized.appBasePath);
+  const basePath = normalized.basePath ?? defaultAdminBasePath(appBase);
   const LoomController = createLoomController(basePath);
-  const controllers: Type<unknown>[] = [LoomController as Type<unknown>];
+  const controllers: Type<unknown>[] = [
+    createLoomAuthController(appBase) as Type<unknown>,
+    createLoomAuthLegacyRedirectController(basePath) as Type<unknown>,
+    LoomController as Type<unknown>,
+  ];
 
-  const apiPrefix = resolveApiPrefix(options);
+  const apiPrefix = resolveApiPrefix(normalized);
   if (apiPrefix) {
     controllers.push(createLoomApiController(apiPrefix) as Type<unknown>);
   }
@@ -134,15 +195,17 @@ export class LoomModule {
 
   /**
    * Async Loom setup. Nest registers controllers when the module is defined —
-   * before `useFactory` runs — so **`basePath` and `api` must be set here**
+   * before `useFactory` runs — so **`appBasePath`, `basePath`, and `api` must be set here**
    * (synchronously), not only inside the factory. Values from the factory are
    * still used for everything else (ORM, auth, resources, …).
    */
   static forRootAsync(asyncOptions: {
     imports?: DynamicModule['imports'];
     inject?: InjectionToken[];
+    /** App mount prefix (e.g. `/my-app`). Sync — factory-only is ignored for routing. */
+    appBasePath?: string;
     /**
-     * Admin URL prefix for the Nest controller (default `/admin`).
+     * Admin URL prefix (default `{appBasePath}/admin`).
      * Required here when not using the default — factory `basePath` alone is ignored for routing.
      */
     basePath?: string;
@@ -154,6 +217,7 @@ export class LoomModule {
   }): DynamicModule {
     const routeOptions: LoomModuleOptions = {
       resources: [],
+      appBasePath: asyncOptions.appBasePath,
       basePath: asyncOptions.basePath,
       api: asyncOptions.api,
     };
@@ -165,7 +229,7 @@ export class LoomModule {
             const resolved = await asyncOptions.useFactory(...args);
             return normalizeOptions({
               ...resolved,
-              // Prefer sync routing options so HTML links match the registered controller.
+              appBasePath: asyncOptions.appBasePath ?? resolved.appBasePath,
               basePath: asyncOptions.basePath ?? resolved.basePath,
               api: asyncOptions.api ?? resolved.api,
             });

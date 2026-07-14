@@ -19,6 +19,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
+    "test": "tsx --test src/*.test.ts",
     "prepublishOnly": "pnpm build"
   },
   "engines": {

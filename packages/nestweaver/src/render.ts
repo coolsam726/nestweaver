@@ -1,8 +1,13 @@
 import Handlebars from 'handlebars';
 import { readFileSync } from 'node:fs';
 import { WEB_DEV_DEFAULT_PORT, NEST_DEFAULT_PORT } from './constants.js';
-import { FRONTEND_LABELS } from './frontend.js';
-import { isSsrFrontend, isSpaFrontend } from './frontend.js';
+import {
+  FRONTEND_LABELS,
+  hasWebApp,
+  isNestHbsFrontend,
+  isSpaFrontend,
+  isSsrFrontend,
+} from './frontend.js';
 import { needsDockerServices } from './generators/docker-compose.js';
 import type { TemplateContext } from './types.js';
 import { dockerInfraServiceNames } from './generators/docker-compose.js';
@@ -33,6 +38,8 @@ export function toContext(
     isNuxt: options.frontend === 'nuxt',
     isAngular: options.frontend === 'angular',
     isVite: options.frontend.startsWith('vite-'),
+    isNestHbs: isNestHbsFrontend(options),
+    hasWebApp: hasWebApp(options),
     isNuxtSsr: isSsrFrontend(options),
     isSsr: isSsrFrontend(options),
     isSpa: isSpaFrontend(options),

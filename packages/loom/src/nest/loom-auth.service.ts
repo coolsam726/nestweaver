@@ -28,6 +28,12 @@ import {
   tenancyMembershipField,
   type LoomTenancyConfig,
 } from '../core/tenancy.js';
+import {
+  defaultAdminBasePath,
+  defaultCookiePath,
+  joinAppPath,
+  normalizeAppBasePath,
+} from '../core/app-path.js';
 import type { LoomCompany } from '../core/types.js';
 import {
   buildCsrfCookie,
@@ -111,25 +117,41 @@ export class LoomAuthService implements OnModuleInit {
   }
 
   get loginPath(): string {
-    return `${this.options.basePath ?? '/admin'}/login`;
+    return joinAppPath(this.appBasePath, 'login');
   }
 
   get logoutPath(): string {
-    return `${this.options.basePath ?? '/admin'}/logout`;
+    return joinAppPath(this.appBasePath, 'logout');
+  }
+
+  get forgotPasswordPath(): string {
+    return joinAppPath(this.appBasePath, 'forgot-password');
+  }
+
+  get resetPasswordPath(): string {
+    return joinAppPath(this.appBasePath, 'reset-password');
+  }
+
+  /** Where signed-in users land after visiting auth pages without a redirect. */
+  get postLoginPath(): string {
+    return this.options.basePath ?? defaultAdminBasePath(this.appBasePath);
+  }
+
+  private get appBasePath(): string {
+    return normalizeAppBasePath(this.options.appBasePath);
   }
 
   isPublicPath(pathname: string): boolean {
-    const base = (this.options.basePath ?? '/admin').replace(/\/$/, '');
     const path = pathname.split('?')[0] ?? pathname;
-    if (path === `${base}/login` || path.endsWith('/login')) return true;
-    if (path === `${base}/forgot-password` || path.endsWith('/forgot-password')) {
+    if (path === this.loginPath || path.endsWith('/login')) return true;
+    if (path === this.forgotPasswordPath || path.endsWith('/forgot-password')) {
       return true;
     }
-    if (path === `${base}/reset-password` || path.endsWith('/reset-password')) {
+    if (path === this.resetPasswordPath || path.endsWith('/reset-password')) {
       return true;
     }
     if (path.includes('/assets/')) return true;
-    if (path === `${base}/logout` || path.endsWith('/logout')) return true;
+    if (path === this.logoutPath || path.endsWith('/logout')) return true;
     return false;
   }
 
@@ -174,11 +196,11 @@ export class LoomAuthService implements OnModuleInit {
           const ttl = cfg.tokenTtlMs ?? 60 * 60 * 1000;
           const token = this.passwordResets.create(user.id, ttl);
           const base =
-            (cfg.publicBaseUrl ?? options?.resetBaseUrl ?? this.options.basePath ?? '/admin').replace(
-              /\/$/,
-              '',
-            );
-          const resetUrl = `${base}/reset-password?token=${encodeURIComponent(token)}`;
+            (cfg.publicBaseUrl ?? options?.resetBaseUrl ?? '').replace(/\/$/, '');
+          const resetPath = this.resetPasswordPath;
+          const resetUrl = base
+            ? `${base}${resetPath}?token=${encodeURIComponent(token)}`
+            : `${resetPath}?token=${encodeURIComponent(token)}`;
 
           if (cfg.sendPasswordResetEmail) {
             await cfg.sendPasswordResetEmail({
@@ -476,7 +498,8 @@ export class LoomAuthService implements OnModuleInit {
 
   clearSessionCookies(): string[] {
     if (!this.options.auth) {
-      return ['loom_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'];
+      const path = defaultCookiePath(this.appBasePath);
+      return [`loom_session=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Lax`];
     }
     const cookies = [buildSessionCookie(this.options.auth, null)];
     if (isCsrfEnabled(this.options.auth)) {

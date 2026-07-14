@@ -53,6 +53,7 @@ ${allowedHosts}
             "outputPath": "dist",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "baseHref": "/",
             "polyfills": [
               "zone.js"
             ],
@@ -123,9 +124,10 @@ export function generateAngularProxyConf(): string {
   return `const nestOrigin = (
   process.env.API_BASE_SERVER ?? 'http://127.0.0.1:${NEST_DEFAULT_PORT}'
 ).replace(/\\/api\\/?$/, '');
+const { apiMount } = require('./base-path.cjs');
 
 module.exports = {
-  '/api': {
+  [apiMount]: {
     target: nestOrigin,
     secure: false,
     changeOrigin: true,
@@ -133,3 +135,25 @@ module.exports = {
 };
 `;
 }
+
+/** Prints trailing-slash base href and exports apiMount for the Angular proxy. */
+export function generateAngularBasePathHelper(): string {
+  return `function normalizeAppBasePath(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw === '/') return '';
+  const withSlash = raw.startsWith('/') ? raw : \`/\${raw}\`;
+  return withSlash.replace(/\\/+$/, '');
+}
+
+const appBase = normalizeAppBasePath(process.env.APP_BASE_PATH);
+const baseHref = appBase ? \`\${appBase}/\` : '/';
+const apiMount = appBase ? \`\${appBase}/api\` : '/api';
+
+module.exports = { appBase, baseHref, apiMount };
+
+if (require.main === module) {
+  process.stdout.write(baseHref);
+}
+`;
+}
+

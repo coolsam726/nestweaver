@@ -1,5 +1,6 @@
 import type { ScaffoldOptions } from '../types.js';
 import { resolveLoomDependency } from './loom-dependency.js';
+import { isNestHbsFrontend } from '../frontend.js';
 
 type Deps = Record<string, string>;
 
@@ -148,7 +149,9 @@ export function generateApiPackageJson(
 
   const scripts: Record<string, string> = {
     build: 'nest build',
-    dev: 'ENABLE_WEB_PROXY=true nest start --watch',
+    dev: isNestHbsFrontend(options)
+      ? 'nest start --watch'
+      : 'ENABLE_WEB_PROXY=true nest start --watch',
     format: 'prettier --write "src/**/*.ts" "test/**/*.ts"',
     start: 'nest start',
     'start:debug': 'nest start --debug --watch',

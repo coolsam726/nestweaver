@@ -814,11 +814,16 @@ select.loom-input option {
   color: var(--color-heading);
 }
 
-.loom-form-grid,
+.loom-form-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(var(--loom-form-cols, 2), minmax(0, 1fr));
+}
+
 .loom-detail-grid {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(var(--loom-form-cols, var(--loom-detail-cols, 2)), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--loom-detail-cols, 2), minmax(0, 1fr));
 }
 
 @media (max-width: 639px) {

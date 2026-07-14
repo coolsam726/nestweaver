@@ -1,5 +1,5 @@
 import type { ScaffoldOptions } from '../types.js';
-import { isSsrFrontend } from '../frontend.js';
+import { isNestHbsFrontend, isSsrFrontend } from '../frontend.js';
 
 function dbModuleImport(options: ScaffoldOptions): string | null {
   switch (options.orm) {
@@ -32,8 +32,11 @@ function dbModuleName(options: ScaffoldOptions): string | null {
 }
 
 export function generateAppModule(options: ScaffoldOptions): string {
+  const nestHbs = isNestHbsFrontend(options);
   const imports: string[] = [
-    "import { DynamicModule, Module, Type } from '@nestjs/common';",
+    nestHbs
+      ? "import { DynamicModule, Module } from '@nestjs/common';"
+      : "import { DynamicModule, Module, Type } from '@nestjs/common';",
     "import { ConfigModule } from '@nestjs/config';",
     "import { HealthController } from './health.controller';",
   ];
@@ -51,11 +54,14 @@ export function generateAppModule(options: ScaffoldOptions): string {
     imports.push("import { LoomAdminModule } from './admin/loom-admin.module';");
   }
 
-  const fallbackImport = isSsrFrontend(options)
-    ? "import { SsrFallbackController } from './ssr-fallback.controller';"
-    : "import { SpaFallbackController } from './spa-fallback.controller';";
-
-  imports.push(fallbackImport);
+  if (nestHbs) {
+    imports.push("import { SiteModule } from './site/site.module';");
+  } else {
+    const fallbackImport = isSsrFrontend(options)
+      ? "import { SsrFallbackController } from './ssr-fallback.controller';"
+      : "import { SpaFallbackController } from './spa-fallback.controller';";
+    imports.push(fallbackImport);
+  }
 
   const dbImport = dbModuleImport(options);
   if (dbImport) imports.push(dbImport);
@@ -74,9 +80,28 @@ export function generateAppModule(options: ScaffoldOptions): string {
 
   if (options.queues) moduleImports.push('QueuesModule');
   if (options.admin) moduleImports.push('LoomAdminModule');
+  if (nestHbs) moduleImports.push('SiteModule');
 
   const dbMod = dbModuleName(options);
   if (dbMod) moduleImports.push(dbMod);
+
+  if (nestHbs) {
+    return `${imports.join('\n')}
+
+@Module({})
+export class AppModule {
+  static register(): DynamicModule {
+    return {
+      module: AppModule,
+      imports: [
+        ${moduleImports.join(',\n        ')},
+      ],
+      controllers: [HealthController],
+    };
+  }
+}
+`;
+  }
 
   const fallbackController = isSsrFrontend(options)
     ? 'SsrFallbackController'

@@ -4,7 +4,7 @@
 
 Scaffold a NestJS monorepo with your choice of frontend and **Loom** included by default — a production-minded admin panel (resources, RBAC, tenancy, media, JSON API) wired into the same app.
 
-Supported frontends: **Nuxt 4**, **Vite + React**, **Vite + Vue**, and **Vite + Svelte**.
+Supported frontends: **Nuxt 4**, **Angular**, **Vite + React / Vue / Svelte**, and **Nest + Handlebars + Alpine** (full stack — no separate `apps/web`; public UI shares Loom sessions and branding).
 
 ## Why Nestweaver
 
@@ -43,7 +43,9 @@ Use `.` as the directory name to scaffold into the current folder:
 npm create nestweaver@latest .
 ```
 
-You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, and Nuxt render mode (SSR/SPA) when applicable. **Loom** (`/admin`, auth/RBAC, JSON API) is always included.
+You'll be prompted for frontend, database, ORM/ODM (filtered by database), scheduling, queues, HTTP adapter, and Nuxt/Angular render mode (SSR/SPA) when applicable. **Loom** (`/admin`, auth/RBAC, JSON API) is always included.
+
+Choosing **Nest + Handlebars + Alpine** scaffolds a single-process full-stack app: public pages and `/login` live in `apps/api` (shared cookies/theme/branding with `/admin`), with no `apps/web` package.
 
 ## After scaffolding
 
@@ -66,6 +68,8 @@ pnpm dev
 Every project includes `docker-compose.yml` and a `dev` Dockerfile stage. The `app` service runs `pnpm dev` with hot reload; infrastructure services are included based on your scaffold options.
 
 Open **http://localhost:4000** — and **http://localhost:4000/admin** when Loom is enabled (seed credentials from `.env`).
+
+To host under a subdirectory (e.g. `https://example.net/my-app/`), set `APP_BASE_PATH=/my-app` and forward that prefix to Nest **without stripping it**. Auth, admin, API, and cookies all use the same prefix.
 
 ## Development (this repo)
 

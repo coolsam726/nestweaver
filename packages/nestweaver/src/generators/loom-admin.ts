@@ -140,11 +140,13 @@ import { LoomModule } from '@nestweaver/loom';
 @Module({
   imports: [
     LoomModule.forRoot({
-      basePath: '/admin',
+      appBasePath: process.env.APP_BASE_PATH || '',
+      basePath: process.env.LOOM_BASE_PATH || undefined,
       branding: { brandName: '${adminTitle(options)}' },
       resources: [],
     }),
   ],
+  exports: [LoomModule],
 })
 export class LoomAdminModule {}
 `;
@@ -165,13 +167,15 @@ ${resourcesImport}
 @Module({
   imports: [
     LoomModule.forRootAsync({
-      basePath: process.env.LOOM_BASE_PATH || '/admin',
+      appBasePath: process.env.APP_BASE_PATH || '',
+      basePath: process.env.LOOM_BASE_PATH || undefined,
       api: { version: 'v1', openapi: true },
       ${loomAsyncImports(options)}
       inject: [${loomInjectTokens(options)}],
       useFactory: ${factoryBody},
     }),
   ],
+  exports: [LoomModule],
 })
 export class LoomAdminModule {}
 `;
@@ -281,7 +285,13 @@ function loomFactoryBody(options: ScaffoldOptions): string {
         storage: {
           disk: 'local' as const,
           root: process.env.LOOM_UPLOADS_DIR || './uploads',
-          publicUrlPrefix: \`\${process.env.LOOM_BASE_PATH || '/admin'}/media\`,
+          publicUrlPrefix: (() => {
+            const appBase = (process.env.APP_BASE_PATH || '').replace(/\\/+$/, '');
+            const admin =
+              process.env.LOOM_BASE_PATH ||
+              (appBase ? \`\${appBase.startsWith('/') ? appBase : \`/\${appBase}\`}/admin\` : '/admin');
+            return \`\${admin}/media\`;
+          })(),
         },
         audit: {
           onAudit: (event) => {
@@ -297,7 +307,8 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(dataSource: DataSource) => ({
         orm: 'typeorm' as const,
         dataSource,
-        basePath: process.env.LOOM_BASE_PATH || '/admin',
+        appBasePath: process.env.APP_BASE_PATH || '',
+        basePath: process.env.LOOM_BASE_PATH || undefined,
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -306,7 +317,8 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(prisma: PrismaService) => ({
         orm: 'prisma' as const,
         dataSource: prisma,
-        basePath: process.env.LOOM_BASE_PATH || '/admin',
+        appBasePath: process.env.APP_BASE_PATH || '',
+        basePath: process.env.LOOM_BASE_PATH || undefined,
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -315,7 +327,8 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(db: unknown) => ({
         orm: 'drizzle' as const,
         dataSource: { db, schema },
-        basePath: process.env.LOOM_BASE_PATH || '/admin',
+        appBasePath: process.env.APP_BASE_PATH || '',
+        basePath: process.env.LOOM_BASE_PATH || undefined,
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}
@@ -324,7 +337,8 @@ function loomFactoryBody(options: ScaffoldOptions): string {
       return `(connection: Connection) => ({
         orm: 'mongoose' as const,
         dataSource: connection,
-        basePath: process.env.LOOM_BASE_PATH || '/admin',
+        appBasePath: process.env.APP_BASE_PATH || '',
+        basePath: process.env.LOOM_BASE_PATH || undefined,
         resources: [${RESOURCE_LIST}],
         ${authBlock}
         ${wave4Block}

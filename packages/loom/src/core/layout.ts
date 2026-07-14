@@ -5,16 +5,29 @@ export interface GridLayoutOptions {
   columnStart?: number;
 }
 
+function normalizeSectionColumns(sectionColumns: unknown): number {
+  const n = Number(sectionColumns);
+  if (Number.isFinite(n) && n >= 1) {
+    return Math.floor(n);
+  }
+  return 2;
+}
+
 export function resolveGridItemStyle(
   layout: GridLayoutOptions,
-  sectionColumns: GridColumns = 2,
+  sectionColumns: GridColumns | number = 2,
 ): string {
-  const cols = Math.max(1, sectionColumns);
-  const span =
-    layout.columnSpan === 'full'
-      ? cols
-      : Math.min(Math.max(layout.columnSpan ?? 1, 1), cols);
+  const cols = normalizeSectionColumns(sectionColumns);
   const start = layout.columnStart;
+
+  if (layout.columnSpan === 'full') {
+    if (start && start > 1) {
+      return `grid-column: ${start} / -1`;
+    }
+    return 'grid-column: 1 / -1';
+  }
+
+  const span = Math.min(Math.max(layout.columnSpan ?? 1, 1), cols);
 
   if (start && start > 1) {
     const end = Math.min(start + span, cols + 1);

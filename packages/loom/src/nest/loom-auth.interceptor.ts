@@ -116,10 +116,19 @@ export class LoomAuthInterceptor implements NestInterceptor {
         if (
           user &&
           req.method === 'GET' &&
-          (pathname.endsWith('/login') || pathname === this.auth.loginPath)
+          (pathname === this.auth.loginPath ||
+            pathname.endsWith('/login') ||
+            pathname === this.auth.forgotPasswordPath ||
+            pathname.endsWith('/forgot-password'))
         ) {
-          const base = this.auth.loginPath.replace(/\/login$/, '') || '/admin';
-          redirect(res, base);
+          const rawUrl = requestUrl(req);
+          let redirectParam: string | null = null;
+          try {
+            redirectParam = new URL(rawUrl, 'http://localhost').searchParams.get('redirect');
+          } catch {
+            redirectParam = null;
+          }
+          redirect(res, safeRedirectPath(redirectParam, this.auth.postLoginPath));
           return of(undefined);
         }
 
@@ -231,4 +240,10 @@ function appendResponseCookie(
   if (typeof res.header === 'function') {
     res.header('Set-Cookie', cookie);
   }
+}
+
+function safeRedirectPath(value: string | null | undefined, fallback: string): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return fallback;
+  return raw;
 }

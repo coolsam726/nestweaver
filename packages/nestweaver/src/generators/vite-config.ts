@@ -5,7 +5,7 @@ import {
 } from '../constants.js';
 
 const VITE_PLUGINS: Record<
-  Exclude<ScaffoldOptions['frontend'], 'nuxt' | 'angular'>,
+  Exclude<ScaffoldOptions['frontend'], 'nuxt' | 'angular' | 'nest-hbs'>,
   { importPlugin: string; plugin: string }
 > = {
   'vite-react': {
@@ -23,7 +23,11 @@ const VITE_PLUGINS: Record<
 };
 
 export function generateViteConfig(options: ScaffoldOptions): string {
-  if (options.frontend === 'nuxt' || options.frontend === 'angular') {
+  if (
+    options.frontend === 'nuxt' ||
+    options.frontend === 'angular' ||
+    options.frontend === 'nest-hbs'
+  ) {
     throw new Error(`generateViteConfig called for ${options.frontend} frontend`);
   }
 
@@ -42,9 +46,17 @@ const webDevPort = Number(
 const webDevHost = process.env.WEB_DEV_HOST ?? '127.0.0.1';
 const exposeDevServer =
   webDevHost === '0.0.0.0' || webDevHost === 'true' || webDevHost === '::';
+const appBaseRaw = (process.env.APP_BASE_PATH || '').trim();
+const appBase =
+  !appBaseRaw || appBaseRaw === '/'
+    ? ''
+    : (appBaseRaw.startsWith('/') ? appBaseRaw : \`/\${appBaseRaw}\`).replace(/\\/+$/, '');
+const viteBase = appBase ? \`\${appBase}/\` : '/';
+const apiMount = appBase ? \`\${appBase}/api\` : '/api';
 
 export default defineConfig({
   plugins: [${plugin}],
+  base: viteBase,
   server: {
     port: webDevPort,
     host: webDevHost,
@@ -55,7 +67,7 @@ export default defineConfig({
       },
     }),
     proxy: {
-      '/api': {
+      [apiMount]: {
         target: nestOrigin,
         changeOrigin: true,
       },

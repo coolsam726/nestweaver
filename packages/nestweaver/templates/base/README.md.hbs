@@ -1,6 +1,6 @@
 # {{projectName}}
 
-NestJS + {{frontendLabel}} monorepo scaffolded with [nestweaver](https://github.com/coolsam726/nuxest).
+NestJS + {{frontendLabel}} monorepo scaffolded with [nestweaver](https://github.com/coolsam726/nestweaver).
 
 ## Quick start (Docker — recommended)
 
@@ -31,13 +31,21 @@ cp .env.example .env
 {{#if admin}}
 Admin panel: **http://localhost:{{nestPort}}/admin**
 {{/if}}
+{{#if isNestHbs}}
+Public site: **http://localhost:{{nestPort}}/** · signed-in app: **/app** · login: **/login**
+{{/if}}
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
+{{#if isNestHbs}}
+| `pnpm dev` | Nest full-stack app on `:{{nestPort}}` |
+| `pnpm build` | Production API build (includes Handlebars views) |
+{{else}}
 | `pnpm dev` | Nest on `:{{nestPort}}` + frontend on `:{{webDevPort}}` (on host) |
 | `pnpm build` | Production build |
+{{/if}}
 | `pnpm start:prod` | Run production server |
 | `pnpm test` | API tests |
 | `pnpm docker:up` | Start full dev stack in background |
@@ -47,11 +55,12 @@ Admin panel: **http://localhost:{{nestPort}}/admin**
 ## Structure
 
 ```
-apps/api          NestJS backend (HTTP entry, /api/*)
-apps/web          {{frontendLabel}} frontend{{#if isVite}} (SPA){{else}} ({{renderMode}}){{/if}}
-packages/shared   Shared TypeScript types
+apps/api          NestJS backend (HTTP entry, /api/*{{#if isNestHbs}}, public site, /admin{{/if}})
+{{#if hasWebApp}}apps/web          {{frontendLabel}} frontend{{#if isVite}} (SPA){{else}} ({{renderMode}}){{/if}}
+{{/if}}{{#if isNestHbs}}apps/api/views    Handlebars layouts and pages (public + app shell)
+{{/if}}packages/shared   Shared TypeScript types
 ```
 
 ## Docs
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for routing, dev proxy, and SSR/SPA notes.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for routing, {{#if isNestHbs}}full-stack Nest rendering{{else}}dev proxy, and SSR/SPA notes{{/if}}.

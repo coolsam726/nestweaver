@@ -6,9 +6,20 @@ export const FRONTEND_LABELS: Record<Frontend, string> = {
   'vite-react': 'Vite + React',
   'vite-vue': 'Vite + Vue',
   'vite-svelte': 'Vite + Svelte',
+  'nest-hbs': 'Nest + Handlebars + Alpine (full stack)',
 };
 
+export function isNestHbsFrontend(options: ScaffoldOptions): boolean {
+  return options.frontend === 'nest-hbs';
+}
+
+/** Separate `apps/web` SPA/SSR app (not Nest-rendered public UI). */
+export function hasWebApp(options: ScaffoldOptions): boolean {
+  return !isNestHbsFrontend(options);
+}
+
 export function isSsrFrontend(options: ScaffoldOptions): boolean {
+  if (isNestHbsFrontend(options)) return false;
   return (
     options.renderMode === 'ssr' &&
     (options.frontend === 'nuxt' || options.frontend === 'angular')
@@ -21,6 +32,7 @@ export function isNuxtSsr(options: ScaffoldOptions): boolean {
 }
 
 export function isSpaFrontend(options: ScaffoldOptions): boolean {
+  if (isNestHbsFrontend(options)) return false;
   return !isSsrFrontend(options);
 }
 

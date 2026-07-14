@@ -646,6 +646,17 @@
         this.query = this.label;
       },
 
+      onFocusOut(event) {
+        const next = event.relatedTarget;
+        if (next && this.$el.contains(next)) return;
+        // Defer so a click on a dropdown option can run before we hide it.
+        queueMicrotask(() => {
+          if (!this.open) return;
+          if (this.$el.contains(document.activeElement)) return;
+          this.close();
+        });
+      },
+
       moveCursor(delta) {
         if (!this.open) {
           this.open = true;
@@ -866,6 +877,17 @@
       close() {
         this.open = false;
         this.query = '';
+      },
+
+      onFocusOut(event) {
+        const next = event.relatedTarget;
+        if (next && this.$el.contains(next)) return;
+        // Defer so a click on a dropdown option can run before we hide it.
+        queueMicrotask(() => {
+          if (!this.open) return;
+          if (this.$el.contains(document.activeElement)) return;
+          this.close();
+        });
       },
 
       moveCursor(delta) {

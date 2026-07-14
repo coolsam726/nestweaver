@@ -106,7 +106,7 @@ export class LoomForbiddenExceptionFilter implements ExceptionFilter {
         user: this.loom.user,
         userInitial: this.loom.userInitial(),
         authEnabled: this.loom.authEnabled,
-        logoutPath: `${this.loom.basePath}/logout`,
+        logoutPath: this.loom.logoutPath,
         message: exception.message,
         resource,
         embed,

@@ -70,7 +70,13 @@ export class InfolistBuilder {
   }
 
   build(): InfolistSchema {
-    return { sections: this.sections };
+    return {
+      sections: this.sections.map((section) => ({
+        ...section,
+        columns: section.columns ?? 2,
+        entries: [...section.entries],
+      })),
+    };
   }
 }
 
