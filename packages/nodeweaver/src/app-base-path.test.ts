@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { generateAngularBasePathHelper } from './generators/angular-config.js';
 import { generateEnvExample } from './generators/env.js';
 import { generateLoomAdminModule } from './generators/loom-admin.js';
 import { generateMain } from './generators/main.js';
@@ -57,5 +58,13 @@ describe('APP_BASE_PATH scaffold wiring', () => {
     });
     assert.match(config, /APP_BASE_PATH/);
     assert.match(config, /base:\s*viteBase/);
+  });
+
+  it('syncs Angular baseHref via --sync instead of ng serve --base-href', () => {
+    const helper = generateAngularBasePathHelper();
+    assert.match(helper, /syncAngularBaseHref/);
+    assert.match(helper, /--sync/);
+    assert.match(helper, /buildOptions\.baseHref\s*=\s*baseHref/);
+    assert.doesNotMatch(helper, /--base-href/);
   });
 });
