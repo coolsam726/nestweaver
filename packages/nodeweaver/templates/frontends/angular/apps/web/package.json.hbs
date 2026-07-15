@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "dev": "ng serve --port {{webDevPort}} --host ${WEB_DEV_HOST:-127.0.0.1} --base-href $(node base-path.cjs) --proxy-config proxy.conf.js",
-    "build": "ng build --base-href $(node base-path.cjs)",
-    "watch": "ng build --watch --configuration development --base-href $(node base-path.cjs)"
+    "dev": "node base-path.cjs --sync && ng serve --port {{webDevPort}} --host ${WEB_DEV_HOST:-127.0.0.1} --proxy-config proxy.conf.js",
+    "build": "node base-path.cjs --sync && ng build",
+    "watch": "node base-path.cjs --sync && ng build --watch --configuration development"
   },
   "dependencies": {
     "{{sharedScope}}": "workspace:*",

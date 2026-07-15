@@ -136,9 +136,12 @@ module.exports = {
 `;
 }
 
-/** Prints trailing-slash base href and exports apiMount for the Angular proxy. */
+/** Syncs APP_BASE_PATH into angular.json and prints the base href. */
 export function generateAngularBasePathHelper(): string {
-  return `function normalizeAppBasePath(value) {
+  return `const fs = require('node:fs');
+const path = require('node:path');
+
+function normalizeAppBasePath(value) {
   const raw = String(value ?? '').trim();
   if (!raw || raw === '/') return '';
   const withSlash = raw.startsWith('/') ? raw : \`/\${raw}\`;
@@ -149,9 +152,26 @@ const appBase = normalizeAppBasePath(process.env.APP_BASE_PATH);
 const baseHref = appBase ? \`\${appBase}/\` : '/';
 const apiMount = appBase ? \`\${appBase}/api\` : '/api';
 
-module.exports = { appBase, baseHref, apiMount };
+function syncAngularBaseHref() {
+  const angularJsonPath = path.join(__dirname, 'angular.json');
+  if (!fs.existsSync(angularJsonPath)) {
+    throw new Error(\`angular.json not found at \${angularJsonPath}\`);
+  }
+  const config = JSON.parse(fs.readFileSync(angularJsonPath, 'utf8'));
+  const buildOptions = config?.projects?.web?.architect?.build?.options;
+  if (!buildOptions || typeof buildOptions !== 'object') {
+    throw new Error('angular.json missing projects.web.architect.build.options');
+  }
+  buildOptions.baseHref = baseHref;
+  fs.writeFileSync(angularJsonPath, \`\${JSON.stringify(config, null, 2)}\\n\`);
+}
+
+module.exports = { appBase, baseHref, apiMount, syncAngularBaseHref };
 
 if (require.main === module) {
+  if (process.argv.includes('--sync')) {
+    syncAngularBaseHref();
+  }
   process.stdout.write(baseHref);
 }
 `;
