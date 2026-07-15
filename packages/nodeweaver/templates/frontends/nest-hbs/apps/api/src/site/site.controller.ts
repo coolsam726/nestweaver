@@ -145,7 +145,7 @@ export class SiteController {
     @Query('error') error?: string,
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     this.sendHtml(
       res,
       this.views.render('profile', 'app-shell', {
@@ -165,7 +165,7 @@ export class SiteController {
     @Query('error') error?: string,
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     this.sendHtml(
       res,
       this.views.render('profile-edit', 'app-shell', {
@@ -184,7 +184,7 @@ export class SiteController {
     @Body() body: { name?: string; email?: string },
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     if (!this.assertMutationCsrf(req, res)) return;
 
     const result = await this.auth.updateProfile(user.id, {
@@ -212,7 +212,7 @@ export class SiteController {
     @Query('error') error?: string,
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     this.sendHtml(
       res,
       this.views.render('profile-password', 'app-shell', {
@@ -235,7 +235,7 @@ export class SiteController {
     },
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     if (!this.assertMutationCsrf(req, res)) return;
 
     const password = String(body.password ?? '');
