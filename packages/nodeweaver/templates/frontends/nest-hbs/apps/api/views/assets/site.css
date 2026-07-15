@@ -460,3 +460,64 @@
   font-size: 0.875rem;
   color: var(--site-ink-soft);
 }
+
+.portal-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.portal-flash {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  font-size: 0.925rem;
+  line-height: 1.4;
+}
+
+.portal-flash--success {
+  background: color-mix(in srgb, var(--color-success-soft, #ecfdf5) 90%, #fff);
+  color: var(--color-success-strong, #047857);
+  border: 1px solid color-mix(in srgb, var(--color-success-strong, #047857) 22%, transparent);
+}
+
+.portal-flash--error {
+  background: color-mix(in srgb, var(--color-danger-soft, #fef2f2) 90%, #fff);
+  color: var(--color-fg-danger, #b91c1c);
+  border: 1px solid color-mix(in srgb, var(--color-fg-danger, #b91c1c) 22%, transparent);
+}
+
+.portal-form-card {
+  max-width: 28rem;
+  padding: 1.35rem 1.4rem;
+  border: 1px solid var(--site-line);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--site-fog) 55%, #fff);
+}
+
+.dark .portal-form-card {
+  background: color-mix(in srgb, var(--site-mist) 70%, #0e141b);
+}
+
+.portal-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.portal-form__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.portal-form__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--site-ink);
+}
+
+.portal-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
