@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm --filter nodeweaver build && pnpm --filter create-nodeweaver build && pnpm --filter @nodeweaver/loom build",
+    "build": "pnpm --filter nodeweaver build && pnpm --filter create-nodeweaver build && pnpm --filter @nodeweaver/loom build && pnpm --filter @nodeweaver/persistence build && pnpm --filter @nodeweaver/erp build && pnpm --filter @nodeweaver/inventory build && pnpm --filter @nodeweaver/accounting build",
     "dev": "pnpm --filter nodeweaver dev",
     "create": "node packages/create-nodeweaver/dist/index.js",
     "create:weaver": "node packages/nodeweaver/dist/cli.js",
