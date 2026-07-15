@@ -212,7 +212,7 @@ export class SiteController {
     @Query('error') error?: string,
   ): Promise<void> {
     const user = await this.requireSignedIn(req, res);
-    if (user === undefined) return;
+    if (!user) return;
     this.sendHtml(
       res,
       this.views.render('profile-password', 'app-shell', {
