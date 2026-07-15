@@ -73,6 +73,7 @@ export function isNestOwnedPath(
   if (!nestOwned && options?.includeNestHbsRoutes) {
     return (
       rest === '/app' ||
+      rest.startsWith('/app/') ||
       rest === '/assets' ||
       rest.startsWith('/assets/')
     );

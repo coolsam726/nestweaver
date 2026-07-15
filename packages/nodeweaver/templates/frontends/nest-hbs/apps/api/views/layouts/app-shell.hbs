@@ -37,15 +37,16 @@
   <header class="portal-nav">
     <a href="{{appPath}}" class="portal-nav__brand">{{brandName}}</a>
     <nav class="portal-nav__links" aria-label="Portal">
-      <a href="{{appPath}}" class="site-nav__link is-active">Portal</a>
+      <a href="{{appPath}}" class="site-nav__link {{#if (eq navActive 'portal')}}is-active{{/if}}">Portal</a>
+      {{#if user}}
+        <a href="{{profilePath}}" class="site-nav__link {{#if (eq navActive 'profile')}}is-active{{/if}}">Profile</a>
+      {{/if}}
       <a href="{{homePath}}" class="site-nav__link">Home</a>
       <a href="{{adminPath}}" class="site-nav__link">Admin</a>
     </nav>
     <div class="site-nav__links">
       {{#if user}}
-        <span class="site-nav__link" style="pointer-events:none;opacity:0.85">{{user.email}}</span>
-        <a href="{{accountPath}}" class="site-nav__link">Profile</a>
-        <a href="{{changePasswordPath}}" class="site-nav__link">Password</a>
+        <a href="{{profilePath}}" class="site-nav__link" title="{{user.email}}">{{#if user.name}}{{user.name}}{{else}}{{user.email}}{{/if}}</a>
       {{/if}}
       <button
         type="button"

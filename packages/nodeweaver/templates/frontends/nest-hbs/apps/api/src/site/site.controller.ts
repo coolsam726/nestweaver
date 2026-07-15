@@ -1,7 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
+  Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
@@ -9,12 +12,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   LoomAuthService,
+  LoomCsrfError,
   LoomService,
   buildBrandingCss,
   loomAdminCssPath,
   loomAlpineJsPath,
   loomUiJsPath,
   setResponseCookies,
+  type LoomAuthUser,
 } from '@nodeweaver/loom';
 import {
   appBaseFromEnv,
@@ -42,7 +47,8 @@ type SiteReq = {
   method?: string;
   headers?: Record<string, unknown>;
   cookies?: Record<string, string>;
-  loomUser?: { id: string; name?: string; email?: string } | null;
+  body?: Record<string, unknown>;
+  loomUser?: LoomAuthUser | null;
 };
 
 type SiteRes = {
@@ -117,38 +123,211 @@ export class SiteController {
 
   @Get('app')
   async dashboard(@Req() req: SiteReq, @Res() res: SiteRes): Promise<void> {
-    if (this.auth.enabled) {
-      const user = await this.auth.resolveUserFromRequest(req);
-      if (!user) {
-        const fallback = joinAppPath(this.loom.appBasePath, 'app');
-        const path = (req.originalUrl ?? req.url ?? fallback).split('?')[0] || fallback;
-        redirect(res, `${this.auth.loginPath}?redirect=${encodeURIComponent(path)}`);
-        return;
-      }
-      req.loomUser = user;
-      this.sendHtml(
+    const user = await this.requireSignedIn(req, res, {
+      allowGuestWhenAuthDisabled: true,
+    });
+    if (user === undefined) return;
+    this.sendHtml(
+      res,
+      this.views.render('dashboard', 'app-shell', {
+        ...this.pageContext(req, res, user),
+        pageTitle: 'Portal',
+        navActive: 'portal',
+      }),
+    );
+  }
+
+  @Get('app/profile')
+  async profile(
+    @Req() req: SiteReq,
+    @Res() res: SiteRes,
+    @Query('success') success?: string,
+    @Query('error') error?: string,
+  ): Promise<void> {
+    const user = await this.requireSignedIn(req, res);
+    if (user === undefined) return;
+    this.sendHtml(
+      res,
+      this.views.render('profile', 'app-shell', {
+        ...this.pageContext(req, res, user),
+        pageTitle: 'Profile',
+        navActive: 'profile',
+        flash: flashFromQuery(success, error),
+      }),
+    );
+  }
+
+  @Get('app/profile/edit')
+  async profileEditForm(
+    @Req() req: SiteReq,
+    @Res() res: SiteRes,
+    @Query('success') success?: string,
+    @Query('error') error?: string,
+  ): Promise<void> {
+    const user = await this.requireSignedIn(req, res);
+    if (user === undefined) return;
+    this.sendHtml(
+      res,
+      this.views.render('profile-edit', 'app-shell', {
+        ...this.pageContext(req, res, user),
+        pageTitle: 'Edit profile',
+        navActive: 'profile',
+        flash: flashFromQuery(success, error),
+      }),
+    );
+  }
+
+  @Post('app/profile/edit')
+  async profileEdit(
+    @Req() req: SiteReq,
+    @Res() res: SiteRes,
+    @Body() body: { name?: string; email?: string },
+  ): Promise<void> {
+    const user = await this.requireSignedIn(req, res);
+    if (user === undefined) return;
+    if (!this.assertMutationCsrf(req, res)) return;
+
+    const result = await this.auth.updateProfile(user.id, {
+      name: body.name,
+      email: body.email,
+    });
+    if (!result.ok) {
+      redirect(
         res,
-        this.views.render('dashboard', 'app-shell', {
-          ...this.pageContext(req, res, user),
-          pageTitle: 'Portal',
-        }),
+        `${this.profileEditPath}?error=${encodeURIComponent(result.message)}`,
+      );
+      return;
+    }
+    req.loomUser = result.user;
+    redirect(
+      res,
+      `${this.profilePath}?success=${encodeURIComponent('Profile updated')}`,
+    );
+  }
+
+  @Get('app/profile/password')
+  async profilePasswordForm(
+    @Req() req: SiteReq,
+    @Res() res: SiteRes,
+    @Query('error') error?: string,
+  ): Promise<void> {
+    const user = await this.requireSignedIn(req, res);
+    if (user === undefined) return;
+    this.sendHtml(
+      res,
+      this.views.render('profile-password', 'app-shell', {
+        ...this.pageContext(req, res, user),
+        pageTitle: 'Change password',
+        navActive: 'profile',
+        flash: flashFromQuery(undefined, error),
+      }),
+    );
+  }
+
+  @Post('app/profile/password')
+  async profilePassword(
+    @Req() req: SiteReq,
+    @Res() res: SiteRes,
+    @Body() body: {
+      currentPassword?: string;
+      password?: string;
+      passwordConfirm?: string;
+    },
+  ): Promise<void> {
+    const user = await this.requireSignedIn(req, res);
+    if (user === undefined) return;
+    if (!this.assertMutationCsrf(req, res)) return;
+
+    const password = String(body.password ?? '');
+    const confirm = String(body.passwordConfirm ?? '');
+    if (password !== confirm) {
+      redirect(
+        res,
+        `${this.profilePasswordPath}?error=${encodeURIComponent('Passwords do not match')}`,
       );
       return;
     }
 
-    this.sendHtml(
-      res,
-      this.views.render('dashboard', 'app-shell', {
-        ...this.pageContext(req, res, null),
-        pageTitle: 'Portal',
-      }),
+    const result = await this.auth.changePassword(
+      user.id,
+      String(body.currentPassword ?? ''),
+      password,
     );
+    if (!result.ok) {
+      redirect(
+        res,
+        `${this.profilePasswordPath}?error=${encodeURIComponent(result.message)}`,
+      );
+      return;
+    }
+
+    setResponseCookies(res, this.auth.clearSessionCookies());
+    redirect(
+      res,
+      `${this.auth.loginPath}?success=${encodeURIComponent('Password updated. Sign in again.')}`,
+    );
+  }
+
+  private get profilePath(): string {
+    return joinAppPath(this.loom.appBasePath, 'app/profile');
+  }
+
+  private get profileEditPath(): string {
+    return joinAppPath(this.loom.appBasePath, 'app/profile/edit');
+  }
+
+  private get profilePasswordPath(): string {
+    return joinAppPath(this.loom.appBasePath, 'app/profile/password');
+  }
+
+  /**
+   * Returns the signed-in user, or `undefined` after redirecting to login.
+   * When auth is disabled, returns `null` (guest mode).
+   */
+  private async requireSignedIn(
+    req: SiteReq,
+    res: SiteRes,
+    options?: { allowGuestWhenAuthDisabled?: boolean },
+  ): Promise<LoomAuthUser | null | undefined> {
+    if (!this.auth.enabled) {
+      if (options?.allowGuestWhenAuthDisabled) {
+        req.loomUser = null;
+        return null;
+      }
+      redirect(res, joinAppPath(this.loom.appBasePath, 'app'));
+      return undefined;
+    }
+    const user = await this.auth.resolveUserFromRequest(req);
+    if (!user) {
+      const fallback = joinAppPath(this.loom.appBasePath, 'app');
+      const path = (req.originalUrl ?? req.url ?? fallback).split('?')[0] || fallback;
+      redirect(res, `${this.auth.loginPath}?redirect=${encodeURIComponent(path)}`);
+      return undefined;
+    }
+    req.loomUser = user;
+    return user;
+  }
+
+  private assertMutationCsrf(req: SiteReq, res: SiteRes): boolean {
+    try {
+      this.auth.assertCsrf(req);
+      return true;
+    } catch (error) {
+      if (error instanceof LoomCsrfError) {
+        redirect(
+          res,
+          `${this.auth.loginPath}?error=${encodeURIComponent(error.message)}`,
+        );
+        return false;
+      }
+      throw error;
+    }
   }
 
   private pageContext(
     req: SiteReq,
     res: SiteRes,
-    user?: { id: string; name?: string; email?: string } | null,
+    user?: LoomAuthUser | null,
   ): Record<string, unknown> {
     const csrf = this.auth.ensureCsrf(req, true);
     if (csrf.setCookie) {
@@ -161,12 +340,13 @@ export class SiteController {
       user: user ?? null,
       homePath: this.loom.homePath,
       appPath: joinAppPath(this.loom.appBasePath, 'app'),
+      profilePath: this.profilePath,
+      profileEditPath: this.profileEditPath,
+      profilePasswordPath: this.profilePasswordPath,
       assetsPath: joinAppPath(this.loom.appBasePath, 'assets'),
       adminPath: this.loom.basePath,
       loginPath: this.auth.loginPath,
       logoutPath: this.auth.logoutPath,
-      accountPath: this.auth.accountPath,
-      changePasswordPath: this.auth.changePasswordPath,
       authEnabled: this.auth.enabled,
     };
   }
@@ -180,6 +360,15 @@ export class SiteController {
     }
     res.send?.(html);
   }
+}
+
+function flashFromQuery(
+  success?: string,
+  error?: string,
+): { type: 'success' | 'error'; message: string } | undefined {
+  if (error) return { type: 'error', message: error };
+  if (success) return { type: 'success', message: success };
+  return undefined;
 }
 
 function redirect(res: SiteRes, url: string): void {

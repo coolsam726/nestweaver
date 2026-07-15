@@ -1,0 +1,51 @@
+<section class="portal-welcome site-rise">
+  <p class="portal-welcome__kicker">Account</p>
+  <h1 class="portal-welcome__title">Edit profile</h1>
+  <p class="portal-welcome__lede">
+    Update the name and email associated with your account.
+  </p>
+</section>
+
+{{#if flash}}
+  <div
+    class="portal-flash site-rise {{#if (eq flash.type 'error')}}portal-flash--error{{else}}portal-flash--success{{/if}}"
+    role="status"
+  >
+    {{flash.message}}
+  </div>
+{{/if}}
+
+<section class="portal-form-card site-rise site-rise-delay-1">
+  <form method="post" action="{{profileEditPath}}" class="portal-form">
+    {{> csrf}}
+    <div class="portal-form__field">
+      <label for="name" class="portal-form__label">Name</label>
+      <input
+        id="name"
+        type="text"
+        name="name"
+        required
+        autofocus
+        autocomplete="name"
+        value="{{user.name}}"
+        class="loom-input"
+      />
+    </div>
+    <div class="portal-form__field">
+      <label for="email" class="portal-form__label">Email</label>
+      <input
+        id="email"
+        type="email"
+        name="email"
+        required
+        autocomplete="username"
+        value="{{user.email}}"
+        class="loom-input"
+      />
+    </div>
+    <div class="portal-form__actions">
+      <button type="submit" class="site-btn site-btn--primary">Save changes</button>
+      <a href="{{profilePath}}" class="site-btn site-btn--ghost">Cancel</a>
+    </div>
+  </form>
+</section>

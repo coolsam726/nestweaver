@@ -1,0 +1,43 @@
+<section class="portal-welcome site-rise">
+  <p class="portal-welcome__kicker">Account</p>
+  <h1 class="portal-welcome__title">Your profile</h1>
+  <p class="portal-welcome__lede">
+    View and manage the name and email on your account. Changes apply everywhere this session is used.
+  </p>
+</section>
+
+{{#if flash}}
+  <div
+    class="portal-flash site-rise {{#if (eq flash.type 'error')}}portal-flash--error{{else}}portal-flash--success{{/if}}"
+    role="status"
+  >
+    {{flash.message}}
+  </div>
+{{/if}}
+
+<section class="portal-panel site-rise site-rise-delay-1" aria-label="Profile">
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Name</p>
+      <p class="portal-row__value">{{#if user.name}}{{user.name}}{{else}}—{{/if}}</p>
+    </div>
+  </div>
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Email</p>
+      <p class="portal-row__value">{{#if user.email}}{{user.email}}{{else}}—{{/if}}</p>
+      <p class="portal-row__meta">Used to sign in</p>
+    </div>
+  </div>
+  <div class="portal-row">
+    <div>
+      <p class="portal-row__label">Actions</p>
+      <p class="portal-row__value">Update account</p>
+      <p class="portal-row__meta">Edit details or change your password</p>
+    </div>
+    <div class="portal-row__actions">
+      <a href="{{profileEditPath}}" class="site-btn site-btn--primary">Edit profile</a>
+      <a href="{{profilePasswordPath}}" class="site-btn site-btn--ghost">Change password</a>
+    </div>
+  </div>
+</section>

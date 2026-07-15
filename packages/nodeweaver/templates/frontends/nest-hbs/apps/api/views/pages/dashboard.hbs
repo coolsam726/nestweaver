@@ -24,6 +24,9 @@
       <p class="portal-row__value">{{#if user.email}}{{user.email}}{{else}}Guest session{{/if}}</p>
       <p class="portal-row__meta">Session shared with Loom admin</p>
     </div>
+    {{#if user}}
+      <a href="{{profilePath}}" class="site-btn site-btn--ghost">View profile</a>
+    {{/if}}
   </div>
   <div class="portal-row">
     <div>
