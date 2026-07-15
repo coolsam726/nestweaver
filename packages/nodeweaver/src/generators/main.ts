@@ -16,18 +16,19 @@ function webDevTarget(): string {
 
 /** API + Loom admin + site-wide auth. Keep APP_BASE_PATH / LOOM_BASE_PATH in sync with LoomModule. */
 function isNestOwnedPath(url: string): boolean {
-  const path = (url.split('?')[0] ?? '').replace(/\/$/, '') || '/';
+  // Escape as \\/ so cooking this template literal yields /\\/$/ in generated main.ts.
+  const path = (url.split('?')[0] ?? '').replace(/\\\/$/, '') || '/';
   const appBaseRaw = (process.env.APP_BASE_PATH || '').trim();
   const appBase = !appBaseRaw || appBaseRaw === '/'
     ? ''
-    : (appBaseRaw.startsWith('/') ? appBaseRaw : \`/\${appBaseRaw}\`).replace(/\/+$/, '');
+    : (appBaseRaw.startsWith('/') ? appBaseRaw : \`/\${appBaseRaw}\`).replace(/\\\/+$/, '');
   let rest = path;
   if (appBase) {
     if (path === appBase) return false;
     if (!path.startsWith(\`\${appBase}/\`)) return false;
     rest = path.slice(appBase.length) || '/';
   }
-  let adminRel = (process.env.LOOM_BASE_PATH || '/admin').replace(/\/$/, '') || '/admin';
+  let adminRel = (process.env.LOOM_BASE_PATH || '/admin').replace(/\\\/$/, '') || '/admin';
   if (!adminRel.startsWith('/')) adminRel = \`/\${adminRel}\`;
   if (appBase && adminRel.startsWith(appBase)) {
     adminRel = adminRel.slice(appBase.length) || '/';

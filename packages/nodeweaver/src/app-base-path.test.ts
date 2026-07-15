@@ -38,6 +38,9 @@ describe('APP_BASE_PATH scaffold wiring', () => {
     assert.match(main, /APP_BASE_PATH/);
     assert.match(main, /isNestOwnedPath/);
     assert.match(main, /appBase/);
+    // Template-literal cooking must not strip regex escapes into //$/ (invalid TS).
+    assert.match(main, /\.replace\(\/\\\/\$\/,\s*''\)/);
+    assert.doesNotMatch(main, /\.replace\(\/\/\$\/,/);
   });
 
   it('wires Nuxt baseURL from APP_BASE_PATH', () => {
