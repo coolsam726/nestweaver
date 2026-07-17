@@ -1,0 +1,73 @@
+{
+  "name": "@nodeweaver/inventory",
+  "version": "0.1.0",
+  "description": "Nodeweaver Inventory — warehouses, stock moves, quants, and pickings for Loom admin (Odoo-inspired).",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./mongoose": {
+      "types": "./dist/models/mongoose/index.d.ts",
+      "require": "./dist/models/mongoose/index.js",
+      "default": "./dist/models/mongoose/index.js"
+    },
+    "./typeorm": {
+      "types": "./dist/models/typeorm/index.d.ts",
+      "require": "./dist/models/typeorm/index.js",
+      "default": "./dist/models/typeorm/index.js"
+    },
+    "./prisma": {
+      "types": "./dist/models/prisma/index.d.ts",
+      "require": "./dist/models/prisma/index.js",
+      "default": "./dist/models/prisma/index.js"
+    },
+    "./drizzle": {
+      "types": "./dist/models/drizzle/index.d.ts",
+      "require": "./dist/models/drizzle/index.js",
+      "default": "./dist/models/drizzle/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "require": "./dist/adapters/index.js",
+      "default": "./dist/adapters/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test test/**/*.test.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "@nodeweaver/erp": ">=0.1.0",
+    "@nodeweaver/loom": ">=0.1.5",
+    "@nodeweaver/persistence": ">=0.1.0",
+    "drizzle-orm": ">=0.30.0",
+    "mongoose": "^8.0.0",
+    "typeorm": "^0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "drizzle-orm": { "optional": true },
+    "mongoose": { "optional": true },
+    "typeorm": { "optional": true }
+  },
+  "devDependencies": {
+    "@nodeweaver/erp": "workspace:*",
+    "@nodeweaver/loom": "workspace:*",
+    "@nodeweaver/persistence": "workspace:*",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coolsam726/nodeweaver.git",
+    "directory": "packages/inventory"
+  },
+  "publishConfig": { "access": "public" }
+}
